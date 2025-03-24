@@ -152,7 +152,6 @@ jobs:
             --default-key ${{ secrets.GPG_KEY_ID }} -abs -o Release.gpg Release
           gpg --batch --yes --pinentry-mode loopback --passphrase "${{ secrets.GPG_PASSPHRASE }}" \
             --default-key ${{ secrets.GPG_KEY_ID }} --clearsign -o InRelease Release
-          cp Release.gpg ../../
 
       - name: Export public key
         run: |
@@ -165,7 +164,7 @@ jobs:
 
       - name: Commit changes to gh-pages
         run: |
-          git add deb/ Release.gpg gpg-key.asc
+          git add deb/ gpg-key.asc
           git commit -m "Update APT repository with ${{ env.APP_NAME }} version ${{ env.VERSION }}" || echo "No changes to commit"
           git push
 
