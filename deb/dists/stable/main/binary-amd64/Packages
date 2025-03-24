@@ -1,12 +1,12 @@
 Package: proxmox-logger
-Version: 0.0.0-20250324-696f5db4
+Version: 0.0.0-20250324-e4c6c226
 Architecture: amd64
 Maintainer: Evrim Uysal <evrimuysal@gmail.com>
-Filename: pool/main/p/proxmox-logger/proxmox-logger_0.0.0-20250324-696f5db4_amd64.deb
-Size: 3140392
-MD5sum: 115b522bd8438316e71c9b898f98fb31
-SHA1: 73dd602c0001edbbfcf25a473899dcd15dd369a6
-SHA256: d0711f7fd5477ccfcd82d92cd840328349de079f86c7e2cf6eac585b79471839
+Filename: pool/main/p/proxmox-logger/proxmox-logger_0.0.0-20250324-e4c6c226_amd64.deb
+Size: 3140394
+MD5sum: 0e1e760dd3e13ebe3d62e779ee065e19
+SHA1: e9d70d3d29414141f09a382f2b472d249af1643d
+SHA256: 5213ca01d608ba5af73f4f2efb19f9ca6530544ff20524fc08fc8e4cad94c5e1
 Section: utils
 Priority: optional
 Homepage: https://github.com/evrimuysal/Proxmox-Logger
