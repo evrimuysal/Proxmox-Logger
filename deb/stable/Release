@@ -1,0 +1,8 @@
+Origin: Proxmox-Logger
+Label: Proxmox-Logger
+Suite: stable
+Codename: stable
+Version: 1.0
+Architectures: amd64
+Components: main
+Description: Proxmox Logger APT Repository 
