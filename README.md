@@ -29,7 +29,7 @@ This application listens for Proxmox logs sent via rsyslog over TCP, filters for
 curl -fsSL https://evrimuysal.github.io/Proxmox-Logger/gpg-key.asc | sudo gpg --dearmor -o /usr/share/keyrings/proxmox-logger-archive-keyring.gpg
 
 # Add repository
-echo "deb [signed-by=/usr/share/keyrings/proxmox-logger-archive-keyring.gpg] https://evrimuysal.github.io/Proxmox-Logger/deb stable main" | sudo tee /etc/apt/sources.list.d/proxmox-logger.list
+echo "deb [signed-by=/usr/share/keyrings/proxmox-logger-archive-keyring.gpg] https://evrimuysal.github.io/Proxmox-Logger/deb/ stable main" | sudo tee /etc/apt/sources.list.d/proxmox-logger.list
 
 # Update package list
 sudo apt update
