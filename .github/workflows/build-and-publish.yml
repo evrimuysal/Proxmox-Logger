@@ -119,7 +119,7 @@ jobs:
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
-          git pull origin main
+          git pull origin main --rebase
           cp -r deb ./  # Overwrite local deb dir
           git add deb/
           git commit -m "Publish APT repo for ${VERSION}"
