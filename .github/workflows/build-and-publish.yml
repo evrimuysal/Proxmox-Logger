@@ -30,8 +30,14 @@ jobs:
       - name: Create DEB structure
         run: |
           mkdir -p ${APP_NAME}-deb/DEBIAN
-          mkdir -p ${APP_NAME}-deb/usr/local/bin
-          cp build/${APP_NAME} ${APP_NAME}-deb/usr/local/bin/
+          mkdir -p ${APP_NAME}-deb/opt/${APP_NAME}
+          mkdir -p ${APP_NAME}-deb/etc/systemd/system
+          
+          # Copy binary to correct location
+          cp build/${APP_NAME} ${APP_NAME}-deb/opt/${APP_NAME}/
+          
+          # Copy service file
+          cp proxmox-logger.service ${APP_NAME}-deb/etc/systemd/system/
 
           cat <<EOF > ${APP_NAME}-deb/DEBIAN/control
           Package: ${APP_NAME}
@@ -39,10 +45,28 @@ jobs:
           Section: base
           Priority: optional
           Architecture: amd64
-          Maintainer: Evrim Uysal <evrim.uysal@yahoo.com>
+          Maintainer: Evrim Uysal <evrimuysal@gmail.com>
           Description: Logger for Proxmox events, sends data to RabbitMQ
            APT üzerinden kurulum için yapılandırılmıştır.
           EOF
+          
+      - name: Create postinst script
+        run: |
+          cat > ${APP_NAME}-deb/DEBIAN/postinst << EOF
+          #!/bin/sh
+          set -e
+          
+          # Make binary executable
+          chmod +x /opt/${APP_NAME}/${APP_NAME}
+          
+          # Enable and start service
+          systemctl daemon-reload
+          systemctl enable proxmox-logger.service
+          systemctl start proxmox-logger.service || echo "Service could not be started, please check logs"
+          
+          exit 0
+          EOF
+          chmod 755 ${APP_NAME}-deb/DEBIAN/postinst
 
       - name: Build .deb package
         run: |
