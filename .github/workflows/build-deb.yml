@@ -60,7 +60,7 @@ jobs:
           Package: ${{ env.APP_NAME }}
           Version: ${{ env.VERSION }}
           Architecture: amd64
-          Maintainer: Evrim Uysal <evrimuysal@gmail.com>
+          Maintainer: Evrim Uysal <evrim.uysal@yahoo.com>
           Description: Proxmox Logger Service
            A lightweight Go application that captures Proxmox pvedaemon logs
            and forwards them to RabbitMQ.
