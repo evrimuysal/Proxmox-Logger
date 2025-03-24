@@ -1,0 +1,15 @@
+#!/usr/bin/make -f
+
+%:
+	dh $@
+
+override_dh_auto_build:
+	dh_auto_build
+	go build -o proxmox-logger
+
+override_dh_auto_install:
+	dh_auto_install
+	mkdir -p debian/proxmox-logger/opt/proxmox-logger
+	mkdir -p debian/proxmox-logger/etc/systemd/system
+	cp proxmox-logger debian/proxmox-logger/opt/proxmox-logger/
+	cp proxmox-logger.service debian/proxmox-logger/etc/systemd/system/ 

@@ -1,0 +1,25 @@
+# Binary
+proxmox-logger
+
+# Debian build files
+debian/.debhelper/
+debian/debhelper-build-stamp
+debian/files
+debian/proxmox-logger.debhelper.log
+debian/proxmox-logger/
+debian/proxmox-logger.substvars
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Go specific
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out 

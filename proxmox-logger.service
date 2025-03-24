@@ -1,0 +1,14 @@
+[Unit]
+Description=Proxmox Logger Service
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/proxmox-logger
+ExecStart=/opt/proxmox-logger/proxmox-logger
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target 
