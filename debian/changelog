@@ -3,4 +3,4 @@ proxmox-logger (1.0.0) unstable; urgency=medium
   * Initial release.
   * Proxmox pvedaemon log capture and RabbitMQ forwarding functionality.
 
- -- Evrim Uysal <evrimuysal@yahoo.com>  Mon, 24 Mar 2024 12:00:00 +0000
+ -- Evrim Uysal <evrimuysal@gmail.com>  Mon, 24 Mar 2024 12:00:00 +0000
