@@ -29,7 +29,25 @@ This application listens for Proxmox logs sent via rsyslog over TCP, filters for
 # Simplified installation with trusted repository
 echo "deb [trusted=yes] https://evrimuysal.github.io/Proxmox-Logger/deb stable main" | sudo tee /etc/apt/sources.list.d/proxmox-logger.list
 sudo apt update
-sudo apt install proxmox-logger
+sudo apt install proxmox-logger -y
+```
+
+If you encounter issues with `apt update` not finding the package, try these troubleshooting steps:
+
+```bash
+# Verify repository configuration
+cat /etc/apt/sources.list.d/proxmox-logger.list
+
+# Force update repository metadata
+sudo apt update -o Acquire::AllowInsecureRepositories=true -o Acquire::AllowDowngradeToInsecureRepositories=true
+
+# Install the package with verbose output
+sudo apt install -V proxmox-logger
+
+# If it's still not working, try downloading and installing directly
+wget https://evrimuysal.github.io/Proxmox-Logger/deb/pool/main/proxmox-logger_1.2.0_amd64.deb
+sudo dpkg -i proxmox-logger_1.2.0_amd64.deb
+sudo apt --fix-broken install
 ```
 
 If you prefer a more secure approach with GPG verification:

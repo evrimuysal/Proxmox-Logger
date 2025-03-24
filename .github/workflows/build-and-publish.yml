@@ -123,27 +123,57 @@ jobs:
           dpkg-deb --build pkg
           mv pkg.deb ${APP_NAME}_${VERSION#v}_amd64.deb
 
+      - name: Install apt tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y apt-utils dpkg-dev
+
       - name: Prepare APT repo structure
         run: |
           # Clear any existing deb directory to avoid conflicts
           rm -rf deb
           
+          # Create proper Debian repository structure
           mkdir -p deb/pool/main
           mkdir -p deb/dists/stable/main/binary-amd64
-          mv ${APP_NAME}_${VERSION#v}_amd64.deb deb/pool/main/
-
-          dpkg-scanpackages deb/pool /dev/null | gzip -9c > deb/dists/stable/main/binary-amd64/Packages.gz
-
-          cat <<EOF > deb/dists/stable/Release
+          
+          # Copy the DEB package to the pool
+          cp ${APP_NAME}_${VERSION#v}_amd64.deb deb/pool/main/
+          
+          # Generate Packages files
+          cd deb
+          
+          # Create uncompressed Packages file
+          dpkg-scanpackages --arch amd64 pool/ > dists/stable/main/binary-amd64/Packages
+          
+          # Create compressed Packages files
+          gzip -k -9 dists/stable/main/binary-amd64/Packages
+          bzip2 -k -9 dists/stable/main/binary-amd64/Packages
+          
+          # Create Release file for the component
+          cd dists/stable
+          
+          # Generate Release file
+          cat > Release << EOF
           Origin: EvrimUysal
           Label: Proxmox Logger
           Suite: stable
           Codename: stable
+          Date: $(date -R)
           Architectures: amd64
           Components: main
-          Description: APT repo for Proxmox Logger
-          Date: $(date -u +"%a, %d %b %Y %H:%M:%S UTC")
+          Description: APT repository for Proxmox Logger
           EOF
+          
+          # Add hashes to the Release file
+          apt-ftparchive release . >> Release
+          
+          # Debug output for verification
+          echo "Contents of Packages file:"
+          cat main/binary-amd64/Packages
+          
+          echo "Contents of Release file:"
+          cat Release
 
       - name: Commit and publish to main branch (GitHub Pages)
         run: |
