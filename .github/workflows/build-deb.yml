@@ -48,11 +48,11 @@ jobs:
           # Create package directory structure
           rm -rf ${{ env.APP_NAME }}-deb
           mkdir -p ${{ env.APP_NAME }}-deb/DEBIAN
-          mkdir -p ${{ env.APP_NAME }}-deb/opt/${{ env.APP_NAME }}
+          mkdir -p ${{ env.APP_NAME }}-deb/usr/local/bin
           mkdir -p ${{ env.APP_NAME }}-deb/etc/systemd/system
           
           # Copy binary and service file
-          cp ${{ env.APP_NAME }} ${{ env.APP_NAME }}-deb/opt/${{ env.APP_NAME }}/
+          cp ${{ env.APP_NAME }} ${{ env.APP_NAME }}-deb/usr/local/bin/
           cp proxmox-logger.service ${{ env.APP_NAME }}-deb/etc/systemd/system/
           
           # Create control file with dynamic version
@@ -72,22 +72,51 @@ jobs:
       - name: Create postinst script
         run: |
           cat > ${{ env.APP_NAME }}-deb/DEBIAN/postinst << EOF
-          #!/bin/sh
+          #!/bin/bash
           set -e
           
-          # Enable and start service
-          if [ -f /etc/systemd/system/proxmox-logger.service ]; then
-            systemctl daemon-reload
-            systemctl enable proxmox-logger.service
-            systemctl start proxmox-logger.service || true
-          fi
+          echo "[postinst] Reloading systemd and enabling service"
+          systemctl daemon-reload
+          systemctl enable proxmox-logger
+          systemctl restart proxmox-logger
           
           exit 0
           EOF
           chmod 755 ${{ env.APP_NAME }}-deb/DEBIAN/postinst
 
+      - name: Create prerm script
+        run: |
+          cat > ${{ env.APP_NAME }}-deb/DEBIAN/prerm << EOF
+          #!/bin/bash
+          set -e
+          
+          echo "[prerm] Stopping and disabling service before removal"
+          systemctl stop proxmox-logger
+          systemctl disable proxmox-logger
+          
+          exit 0
+          EOF
+          chmod 755 ${{ env.APP_NAME }}-deb/DEBIAN/prerm
+
+      - name: Create postrm script
+        run: |
+          cat > ${{ env.APP_NAME }}-deb/DEBIAN/postrm << EOF
+          #!/bin/bash
+          set -e
+          
+          echo "[postrm] Cleaning up service files"
+          systemctl daemon-reload
+          
+          exit 0
+          EOF
+          chmod 755 ${{ env.APP_NAME }}-deb/DEBIAN/postrm
+
       - name: Build Debian package
         run: |
+          # Make binary executable
+          chmod +x ${{ env.APP_NAME }}-deb/usr/local/bin/${{ env.APP_NAME }}
+          
+          # Build the package
           dpkg-deb --build ${{ env.APP_NAME }}-deb
           mv ${{ env.APP_NAME }}-deb.deb ${{ env.APP_NAME }}_${{ env.VERSION }}_amd64.deb
           ls -la ${{ env.APP_NAME }}_${{ env.VERSION }}_amd64.deb

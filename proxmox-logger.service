@@ -3,10 +3,12 @@ Description=Proxmox Logger Service
 After=network.target
 
 [Service]
-ExecStart=/opt/proxmox-logger/proxmox-logger
-Restart=always
+ExecStart=/usr/local/bin/proxmox-logger
+Restart=on-failure
 User=root
 Group=root
+ExecReload=/bin/kill -HUP $MAINPID
+ExecStop=/bin/kill -TERM $MAINPID
 
 [Install]
 WantedBy=multi-user.target
