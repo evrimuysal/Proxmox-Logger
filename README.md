@@ -25,6 +25,15 @@ This application listens for Proxmox logs sent via rsyslog over TCP, filters for
 ### Using apt (Debian/Ubuntu)
 
 ```bash
+# Simplified installation with trusted repository
+echo "deb [trusted=yes] https://evrimuysal.github.io/Proxmox-Logger/deb stable main" | sudo tee /etc/apt/sources.list.d/proxmox-logger.list
+sudo apt update
+sudo apt install proxmox-logger
+```
+
+If you prefer a more secure approach with GPG verification:
+
+```bash
 # Add GPG key
 curl -fsSL https://evrimuysal.github.io/Proxmox-Logger/gpg-key.asc | sudo gpg --dearmor -o /usr/share/keyrings/proxmox-logger-archive-keyring.gpg
 

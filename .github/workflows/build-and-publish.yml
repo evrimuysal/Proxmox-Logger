@@ -16,8 +16,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
 
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -29,51 +27,75 @@ jobs:
           mkdir -p build
           GOOS=linux GOARCH=amd64 go build -o build/${APP_NAME} main.go
 
-      - name: Create DEB structure
+      - name: Create DEB package structure with systemd
         run: |
-          mkdir -p ${APP_NAME}-deb/DEBIAN
-          mkdir -p ${APP_NAME}-deb/opt/${APP_NAME}
-          mkdir -p ${APP_NAME}-deb/etc/systemd/system
-          
-          # Copy binary to correct location
-          cp build/${APP_NAME} ${APP_NAME}-deb/opt/${APP_NAME}/
-          
-          # Copy service file
-          cp proxmox-logger.service ${APP_NAME}-deb/etc/systemd/system/
+          mkdir -p pkg/DEBIAN
+          mkdir -p pkg/usr/local/bin
+          mkdir -p pkg/etc/systemd/system
 
-          cat <<EOF > ${APP_NAME}-deb/DEBIAN/control
+          # Binary
+          cp build/${APP_NAME} pkg/usr/local/bin/${APP_NAME}
+          chmod +x pkg/usr/local/bin/${APP_NAME}
+
+          # Control file
+          cat <<EOF > pkg/DEBIAN/control
           Package: ${APP_NAME}
           Version: ${VERSION#v}
           Section: base
           Priority: optional
           Architecture: amd64
-          Maintainer: Evrim Uysal <evrimuysal@gmail.com>
-          Description: Logger for Proxmox events, sends data to RabbitMQ
-           APT üzerinden kurulum için yapılandırılmıştır.
+          Maintainer: Evrim Uysal <evrim.uysal@yahoo.com>
+          Description: Logger for Proxmox, sends events to RabbitMQ.
           EOF
-          
-      - name: Create postinst script
-        run: |
-          cat > ${APP_NAME}-deb/DEBIAN/postinst << EOF
-          #!/bin/sh
-          set -e
-          
-          # Make binary executable
-          chmod +x /opt/${APP_NAME}/${APP_NAME}
-          
-          # Enable and start service
-          systemctl daemon-reload
-          systemctl enable proxmox-logger.service
-          systemctl start proxmox-logger.service || echo "Service could not be started, please check logs"
-          
-          exit 0
-          EOF
-          chmod 755 ${APP_NAME}-deb/DEBIAN/postinst
 
-      - name: Build .deb package
-        run: |
-          dpkg-deb --build ${APP_NAME}-deb
-          mv ${APP_NAME}-deb.deb ${APP_NAME}_${VERSION#v}_amd64.deb
+          # postinst
+          cat <<EOF > pkg/DEBIAN/postinst
+          #!/bin/bash
+          set -e
+          systemctl daemon-reload
+          systemctl enable ${APP_NAME}
+          systemctl restart ${APP_NAME}
+          EOF
+          chmod +x pkg/DEBIAN/postinst
+
+          # prerm
+          cat <<EOF > pkg/DEBIAN/prerm
+          #!/bin/bash
+          set -e
+          systemctl stop ${APP_NAME}
+          systemctl disable ${APP_NAME}
+          EOF
+          chmod +x pkg/DEBIAN/prerm
+
+          # postrm
+          cat <<EOF > pkg/DEBIAN/postrm
+          #!/bin/bash
+          set -e
+          systemctl daemon-reload
+          EOF
+          chmod +x pkg/DEBIAN/postrm
+
+          # systemd service
+          cat <<EOF > pkg/etc/systemd/system/${APP_NAME}.service
+          [Unit]
+          Description=Proxmox Logger Service
+          After=network.target
+
+          [Service]
+          ExecStart=/usr/local/bin/${APP_NAME}
+          Restart=on-failure
+          User=root
+          Group=root
+          ExecReload=/bin/kill -HUP \$MAINPID
+          ExecStop=/bin/kill -TERM \$MAINPID
+
+          [Install]
+          WantedBy=multi-user.target
+          EOF
+
+          # Build .deb
+          dpkg-deb --build pkg
+          mv pkg.deb ${APP_NAME}_${VERSION#v}_amd64.deb
 
       - name: Prepare APT repo structure
         run: |
@@ -93,27 +115,12 @@ jobs:
           Description: APT repo for Proxmox Logger
           EOF
 
-      - name: Commit and push to main branch (for GitHub Pages)
+      - name: Commit and publish to main branch (GitHub Pages)
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
-          
-          # Fetch all branches first
-          git fetch --all
-          
-          # Try to checkout main branch
-          if git show-ref --verify --quiet refs/remotes/origin/main; then
-            git checkout -b gh-pages-temp
-            git reset --hard origin/main
-          else
-            git checkout -b gh-pages-temp
-            git commit --allow-empty -m "Initial empty commit for gh-pages"
-          fi
-          
-          # Copy repo structure and add
-          cp -r deb ./
+          git pull origin main
+          cp -r deb ./  # Overwrite local deb dir
           git add deb/
-          
-          # Commit and push with force if needed
-          git commit -m "Publish APT repo for ${VERSION}" || echo "No changes to commit"
-          git push --force origin gh-pages-temp:main 
+          git commit -m "Publish APT repo for ${VERSION}"
+          git push origin HEAD:main 
