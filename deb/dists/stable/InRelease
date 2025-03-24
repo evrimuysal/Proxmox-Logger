@@ -1,0 +1,42 @@
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA512
+
+Origin: Proxmox Logger Repository
+Label: Proxmox Logger
+Suite: stable
+Codename: stable
+Architectures: amd64
+Components: main
+Description: Debian packages for Proxmox Logger
+Date: Mon, 24 Mar 2025 13:26:41 UTC
+Date: Mon, 24 Mar 2025 13:26:41 +0000
+MD5Sum:
+ b4e0b3b1e7533423be6d19abad9e8b9a              247 Release
+ c4e808a939660d1836ab8be01c7317ee              610 main/binary-amd64/Packages
+ dcf86375f24f716d3a280d6456138aa9              430 main/binary-amd64/Packages.gz
+SHA1:
+ 3c91aec78affb8f9d28147c3ad8fed2685bf4343              247 Release
+ 40f5a8efbcbb7143334efe7ae2b348823b870985              610 main/binary-amd64/Packages
+ 4dfb4f0b4f6ef2ecaa741e4940ac7dffbbd22c48              430 main/binary-amd64/Packages.gz
+SHA256:
+ 91f0d1de6654a55be2b35c4e90d57c002c304c4dbf15210ff0e5faeb0f3fc40a              247 Release
+ 4eb142f8115db53f0ec24dfde85b5d3a17853fe7071619ea3b0e19200652f8cb              610 main/binary-amd64/Packages
+ 7eb467c16ad90589d383d35618f2c8f96549bd29819f7e353dd885d63a585566              430 main/binary-amd64/Packages.gz
+SHA512:
+ b597cef3b1ff5b9c2870d44664d89ff8a4a2e96e64bbbc9a61c28e7db03b4609e3b8ca1b3aad4bb82c3b4b9d1767c33b83d6684e485b89d7531a3bea2fb804bd              247 Release
+ b586c860fc19426bf8a6df349f6c87b3c1a612e8888dd40c7d3ad82325d230b0e2bf22b9037217175dd437e67e11a1c82ae3cdcf3332d3d9bc34f205e52ad2cb              610 main/binary-amd64/Packages
+ b2ac3a8b776ab3669486bfe929764e5fca649dac93be1c90793d7fe2a0de89b9a30e114512984942702b47723d92c3bf05006cc05f9b36fef512c959fdbf31d6              430 main/binary-amd64/Packages.gz
+-----BEGIN PGP SIGNATURE-----
+
+iQGzBAEBCgAdFiEEi9aVWdOyTbkPReBhZCt1bOruBTkFAmfhXZIACgkQZCt1bOru
+BTktcwv/dPGZtJ1PGIevUyW1HBDlD8t5kfAReYIG7dYZhfrL9PKUFnMscgMK4Mda
+uf1WUg4G6WYtr8qa89SF1MVtGiVKWLOrEsIR03K9yuN7pHA8gGFrlV1c3zOYq8oq
+zVOAnb9MAumt5yojByR1gLj+G+KxmuU1Y3Pyt5fwwULSZO+njxFhCzMcs8f2ZWlk
+2p04JHfdHtjMF8faQmOrxHpjc+1q04y4Co1QZLNJQK+F3RaqTcVriqt2SmpzTw5Z
+zBQtLaUtGCRuaQ2+rWNHR8ZzjfbDCGDVXzVE2LkmO2eCdc2WJik67svZQbKiPct2
+Yo/UvNJzxgmcUrwJNKkS9sIulbHPO1PdKl4WgwfEd/5g5ha6Mq2AZZtcuNYmcsUK
+wmFmpEWQovmIJWxQ/NC4YOSLj/QxFtPlJzcuh2364KPOj3YLlOtXooMKPMVzaijP
+lKH+k+oE9uL9Ek7Uk993n4cI5cvrcODHVi2krpOWauw4uj2FVwv29VWmBgEb8fFw
+ZF+5FUQU
+=1ed5
+-----END PGP SIGNATURE-----

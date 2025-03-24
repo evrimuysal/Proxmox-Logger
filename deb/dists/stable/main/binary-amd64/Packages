@@ -1,0 +1,16 @@
+Package: proxmox-logger
+Version: 0.0.0-20250324-3ae699c8
+Architecture: amd64
+Maintainer: Evrim Uysal <evrimuysal@gmail.com>
+Filename: pool/main/p/proxmox-logger/proxmox-logger_0.0.0-20250324-3ae699c8_amd64.deb
+Size: 3140384
+MD5sum: 44ab28cee01896d6d82a327ccb3b9a1e
+SHA1: 99c51e130268ade23b159f89bdf2e1ad8c77ec5f
+SHA256: a854e9dd9e6f8c57053282d6b908509dcc59615adeb307b535b96d1dfaa9e9b6
+Section: utils
+Priority: optional
+Homepage: https://github.com/evrimuysal/Proxmox-Logger
+Description: Proxmox Logger Service
+ A lightweight Go application that captures Proxmox pvedaemon logs
+ and forwards them to RabbitMQ.
+
