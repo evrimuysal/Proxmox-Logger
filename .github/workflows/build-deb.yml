@@ -1,0 +1,190 @@
+name: Build and Publish Debian Package
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+env:
+  APP_NAME: proxmox-logger
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.18'
+
+      - name: Extract version from tag
+        if: startsWith(github.ref, 'refs/tags/')
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
+
+      - name: Set default version if not from tag
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        run: echo "VERSION=1.0.0" >> $GITHUB_ENV
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y debhelper dh-make devscripts lintian
+
+      - name: Install Go dependencies
+        run: go mod download
+
+      - name: Build Go binary
+        run: GOOS=linux GOARCH=amd64 go build -o ${{ env.APP_NAME }} main.go
+
+      - name: Prepare package directory
+        run: |
+          # Create package directory structure
+          rm -rf ${{ env.APP_NAME }}-deb
+          mkdir -p ${{ env.APP_NAME }}-deb/DEBIAN
+          mkdir -p ${{ env.APP_NAME }}-deb/usr/local/bin
+          mkdir -p ${{ env.APP_NAME }}-deb/etc/systemd/system
+          
+          # Copy binary and service file
+          cp ${{ env.APP_NAME }} ${{ env.APP_NAME }}-deb/usr/local/bin/
+          cp proxmox-logger.service ${{ env.APP_NAME }}-deb/etc/systemd/system/
+          
+          # Create control file with dynamic version
+          cat > ${{ env.APP_NAME }}-deb/DEBIAN/control << EOF
+          Package: ${{ env.APP_NAME }}
+          Version: ${{ env.VERSION }}
+          Architecture: amd64
+          Maintainer: Evrim Uysal <evrimuysal@gmail.com>
+          Description: Proxmox Logger Service
+           A lightweight Go application that captures Proxmox pvedaemon logs
+           and forwards them to RabbitMQ.
+          Section: utils
+          Priority: optional
+          Homepage: https://github.com/evrimuysal/Proxmox-Logger
+          EOF
+
+      - name: Create postinst script
+        run: |
+          cat > ${{ env.APP_NAME }}-deb/DEBIAN/postinst << EOF
+          #!/bin/sh
+          set -e
+          
+          # Enable and start service
+          if [ -f /etc/systemd/system/proxmox-logger.service ]; then
+            systemctl daemon-reload
+            systemctl enable proxmox-logger.service
+            systemctl start proxmox-logger.service || true
+          fi
+          
+          exit 0
+          EOF
+          chmod 755 ${{ env.APP_NAME }}-deb/DEBIAN/postinst
+
+      - name: Build Debian package
+        run: |
+          dpkg-deb --build ${{ env.APP_NAME }}-deb
+          mv ${{ env.APP_NAME }}-deb.deb ${{ env.APP_NAME }}_${{ env.VERSION }}_amd64.deb
+          ls -la ${{ env.APP_NAME }}_${{ env.VERSION }}_amd64.deb
+
+      - name: Upload Debian package as artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ env.APP_NAME }}-deb
+          path: ${{ env.APP_NAME }}_${{ env.VERSION }}_amd64.deb
+
+  publish-to-apt-repo:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    permissions:
+      contents: write
+      pages: write
+    env:
+      APP_NAME: proxmox-logger
+    steps:
+      - name: Checkout gh-pages branch
+        uses: actions/checkout@v3
+        with:
+          ref: gh-pages
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Download package artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: ${{ env.APP_NAME }}-deb
+          path: ./download
+
+      - name: Setup APT Repository structure
+        run: |
+          mkdir -p deb/stable/main/binary-amd64
+          cp ./download/proxmox-logger_*.deb deb/stable/main/binary-amd64/
+
+      - name: Install required tools
+        run: sudo apt-get install -y dpkg-dev apt-utils
+
+      - name: Generate Packages file
+        run: |
+          cd deb/stable/main/binary-amd64
+          dpkg-scanpackages . /dev/null > Packages
+          gzip -k -f Packages
+
+      - name: Import GPG key
+        uses: crazy-max/ghaction-import-gpg@v5
+        with:
+          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+          passphrase: ${{ secrets.GPG_PASSPHRASE }}
+      
+      - name: Verify GPG key
+        run: gpg --list-secret-keys
+
+      - name: Generate Release files
+        run: |
+          cd deb/stable
+          apt-ftparchive release . > Release
+          gpg --batch --yes --pinentry-mode loopback --passphrase "${{ secrets.GPG_PASSPHRASE }}" \
+            --default-key ${{ secrets.GPG_KEY_ID }} -abs -o Release.gpg Release
+          gpg --batch --yes --pinentry-mode loopback --passphrase "${{ secrets.GPG_PASSPHRASE }}" \
+            --default-key ${{ secrets.GPG_KEY_ID }} --clearsign -o InRelease Release
+          cp Release.gpg ../../
+
+      - name: Export public key
+        run: |
+          gpg --armor --export ${{ secrets.GPG_KEY_ID }} > gpg-key.asc
+
+      - name: Configure Git
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+
+      - name: Commit changes to gh-pages
+        run: |
+          git add deb/ Release.gpg gpg-key.asc
+          git commit -m "Update APT repository with ${{ env.APP_NAME }} version ${{ env.VERSION }}" || echo "No changes to commit"
+          git push
+
+  attach-to-release:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      APP_NAME: proxmox-logger
+    steps:
+      - name: Download package artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: ${{ env.APP_NAME }}-deb
+          path: ./download
+
+      - name: Create GitHub Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: ./download/${{ env.APP_NAME }}_*_amd64.deb
+          generate_release_notes: true
+          draft: false 
