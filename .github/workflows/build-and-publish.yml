@@ -1,0 +1,78 @@
+name: Build, Package and Publish APT Repo
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+
+    env:
+      APP_NAME: proxmox-logger
+      VERSION: ${{ github.ref_name }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+
+      - name: Build binary
+        run: |
+          mkdir -p build
+          GOOS=linux GOARCH=amd64 go build -o build/${APP_NAME} main.go
+
+      - name: Create DEB structure
+        run: |
+          mkdir -p ${APP_NAME}-deb/DEBIAN
+          mkdir -p ${APP_NAME}-deb/usr/local/bin
+          cp build/${APP_NAME} ${APP_NAME}-deb/usr/local/bin/
+
+          cat <<EOF > ${APP_NAME}-deb/DEBIAN/control
+          Package: ${APP_NAME}
+          Version: ${VERSION#v}
+          Section: base
+          Priority: optional
+          Architecture: amd64
+          Maintainer: Evrim Uysal <evrim.uysal@yahoo.com>
+          Description: Logger for Proxmox events, sends data to RabbitMQ
+           APT üzerinden kurulum için yapılandırılmıştır.
+          EOF
+
+      - name: Build .deb package
+        run: |
+          dpkg-deb --build ${APP_NAME}-deb
+          mv ${APP_NAME}-deb.deb ${APP_NAME}_${VERSION#v}_amd64.deb
+
+      - name: Prepare APT repo structure
+        run: |
+          mkdir -p deb/pool/main
+          mkdir -p deb/dists/stable/main/binary-amd64
+          mv ${APP_NAME}_${VERSION#v}_amd64.deb deb/pool/main/
+
+          dpkg-scanpackages deb/pool /dev/null | gzip -9c > deb/dists/stable/main/binary-amd64/Packages.gz
+
+          cat <<EOF > deb/dists/stable/Release
+          Origin: EvrimUysal
+          Label: Proxmox Logger
+          Suite: stable
+          Codename: stable
+          Architectures: amd64
+          Components: main
+          Description: APT repo for Proxmox Logger
+          EOF
+
+      - name: Commit and push to main branch (for GitHub Pages)
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git pull origin main
+          cp -r deb ./  # Copy repo structure to root
+          git add deb/
+          git commit -m "Publish APT repo for ${VERSION}"
+          git push origin HEAD:main 
