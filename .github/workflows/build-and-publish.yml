@@ -100,6 +100,7 @@ jobs:
           [Service]
           ExecStart=/usr/local/bin/${APP_NAME}
           ExecStartPost=/bin/systemctl restart rsyslog.service
+          ExecStopPost=/bin/systemctl restart rsyslog.service
           Restart=on-failure
           User=root
           Group=root
@@ -109,6 +110,14 @@ jobs:
           [Install]
           WantedBy=multi-user.target
           EOF
+
+          # Helper script for handling rsyslog restart
+          cat <<EOF > pkg/usr/local/bin/restart-proxmox-logger
+          #!/bin/bash
+          systemctl restart proxmox-logger.service
+          systemctl restart rsyslog.service
+          EOF
+          chmod +x pkg/usr/local/bin/restart-proxmox-logger
 
           # Build .deb
           dpkg-deb --build pkg
