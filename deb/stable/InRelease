@@ -1,0 +1,34 @@
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA512
+
+Date: Mon, 24 Mar 2025 12:31:56 +0000
+MD5Sum:
+ 29f25ef9bd8cdd5e42c6212de16856d3               38 Release
+ eea02185eb0acfc7718cd5271556b9f0              585 main/binary-amd64/Packages
+ e42325417127d8534dea86732ab3ca43              423 main/binary-amd64/Packages.gz
+SHA1:
+ 271efcc37d9b1aa2743b32ce45de9deadeab74f1               38 Release
+ 81676efad99c0a3bf7f49218a41171e322ab6909              585 main/binary-amd64/Packages
+ 7a621e51517367401fd7d5583d66c245bbede604              423 main/binary-amd64/Packages.gz
+SHA256:
+ f2963e3602ceebd4667c7d04ef9eae82e952eeffe464248c772ab989a1af0b3f               38 Release
+ 9b2469f1ca7374687a4b8a91b79c1ca67d0374474749e47d947385caf0c09f25              585 main/binary-amd64/Packages
+ f8784a8ddf87a2849ab274b81f4450bd46ab473fe35dd60a732b858ca4041260              423 main/binary-amd64/Packages.gz
+SHA512:
+ 577eba7d4b38cde6547351e9696d589fc7bb55a70648e862521cd733ce4a59d0b42e36a1d0abf05b22d8eee68d406201210bb3e0088abed353f5619891e2f971               38 Release
+ cbad8067b333c4327d57fb107d2f565871fb41910da4b051e961b17d19b8d94c397e4da0ad9f76ff0ef1820c6a921adafd758e8217224f45c92c3c0d5b104a99              585 main/binary-amd64/Packages
+ 5fb59ca615408c0e3b3dab9b0cb7172f55dc7eeb45b1137d9792c3e2a0281ae389215db864ab2f803d4877ed3110f97c8989c7b8bbd5ea6aeaf2782b1cc33849              423 main/binary-amd64/Packages.gz
+-----BEGIN PGP SIGNATURE-----
+
+iQGzBAEBCgAdFiEEi9aVWdOyTbkPReBhZCt1bOruBTkFAmfhUL0ACgkQZCt1bOru
+BTkyFgv/SHio2fzJk6h6q5pcZ2fG2wLoaxhLpNy8k7gT8CNXbqY2zuXeAYFhdBiS
+LW4HFnwuKg91a4evZLcIO7e9Fm7yYu8QwuDSzsb8w5fNBxEaOVAFhVjxuZ6Lxb7q
+6YTT25itOGyJOMv+ChYfkscLcMcEG2Pp2DxiECmKly7X5h0cr9ula6FBjKJlTwgV
+E/fY8TN27t33Db0/wpOLH+KFkYU/Sol2EFJv5z/LXkBmQRGp5nm+hjrfhP5tD9n6
+ZVoTw+8qXDghVjJuIvfusPk5hzsL8K73/fOiSpepUrqlmdbH8zwqZM9dtT1OxRHi
+cOZqw5lm6y+H7bwpAfyObOhRhLNpm0wW24VwV1+PNS/0q8MbZ+ajfVfD3g0VUVYD
+UNp6fRt8ryvIKZutb1w4++KZlzCsfCL+PFbuYETraqCGJQzHoL0kMJSTUb7pgftc
+RM2eopfgzBHtbUAbJSRxFq15lgxutPmMxzJjrd27PMWS/ymKvV4W40a+LhSyQEau
+59G0SPsI
+=KBMy
+-----END PGP SIGNATURE-----
