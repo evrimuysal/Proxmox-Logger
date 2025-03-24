@@ -7,11 +7,12 @@ on:
     paths-ignore:
       - "deb/**"
       - "README.md"
-      - ".github/workflows/**"
 
 jobs:
   auto-tag:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write  # Needed for creating tags and releases
     
     steps:
       - name: Checkout code
@@ -54,7 +55,7 @@ jobs:
           COMMIT_SHORT=$(git rev-parse --short HEAD)
           echo "commit=$COMMIT_SHORT" >> $GITHUB_OUTPUT
       
-      - name: Create and push tag
+      - name: Create annotated tag
         run: |
           VERSION=${{ steps.version.outputs.version }}
           DATE=${{ steps.version.outputs.date }}
@@ -70,4 +71,21 @@ jobs:
           # Push tag
           git push origin $VERSION
           
-          echo "Created and pushed tag: $VERSION" 
+          echo "Created and pushed tag: $VERSION"
+          
+      - name: Wait for build-deb workflow to complete
+        run: |
+          echo "Waiting for build-deb workflow to complete..."
+          sleep 30  # Give some time for the workflow to start
+      
+      - name: Create GitHub Release (if build failed)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.version }}
+          name: "Release ${{ steps.version.outputs.version }}"
+          body: |
+            Automated release for version ${{ steps.version.outputs.version }}
+            
+            Created on ${{ steps.version.outputs.date }} from commit ${{ steps.version.outputs.commit }}
+          draft: false
+          generate_release_notes: true 
