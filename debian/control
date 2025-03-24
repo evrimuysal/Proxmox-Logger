@@ -1,7 +1,7 @@
 Source: proxmox-logger
 Section: utils
 Priority: optional
-Maintainer: Evrim Uysal <evrimuysal@gmail.com>
+Maintainer: Evrim Uysal <evrimuysal@yahoo.com>
 Build-Depends: debhelper (>= 11), golang-go (>= 1.18)
 Standards-Version: 4.1.4
 
