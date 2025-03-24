@@ -11,5 +11,12 @@ override_dh_auto_install:
 	dh_auto_install
 	mkdir -p debian/proxmox-logger/opt/proxmox-logger
 	mkdir -p debian/proxmox-logger/etc/systemd/system
+	mkdir -p debian/proxmox-logger/etc/proxmox-logger
+	mkdir -p debian/proxmox-logger/etc/default
+	mkdir -p debian/proxmox-logger/var/log
 	cp proxmox-logger debian/proxmox-logger/opt/proxmox-logger/
-	cp proxmox-logger.service debian/proxmox-logger/etc/systemd/system/ 
+	cp proxmox-logger.service debian/proxmox-logger/etc/systemd/system/
+	cp config.yml debian/proxmox-logger/etc/proxmox-logger/
+	cp defaults debian/proxmox-logger/etc/default/proxmox-logger
+	touch debian/proxmox-logger/var/log/proxmox-logger.log
+	chmod 644 debian/proxmox-logger/var/log/proxmox-logger.log 

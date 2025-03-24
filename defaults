@@ -1,0 +1,18 @@
+# Proxmox Logger Environment Variables
+# This file is sourced by systemd service
+
+# RabbitMQ Settings
+# PROXMOX_LOGGER_RABBITMQ_URI="amqp://guest:guest@localhost:5672/"
+# PROXMOX_LOGGER_QUEUE_NAME="proxmox_logs"
+# PROXMOX_LOGGER_EXCHANGE=""
+# PROXMOX_LOGGER_ROUTING_KEY=""
+
+# Rsyslog Settings
+# PROXMOX_LOGGER_PROTOCOL="tcp"
+# PROXMOX_LOGGER_PORT="18006"
+
+# Logging Settings
+# PROXMOX_LOGGER_LOG_FILE="/var/log/proxmox-logger.log"
+
+# Configuration file location (default is /etc/proxmox-logger/config.yml)
+# PROXMOX_LOGGER_CONFIG="/etc/proxmox-logger/config.yml" 

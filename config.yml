@@ -1,0 +1,18 @@
+# Proxmox Logger Configuration
+
+# RabbitMQ Connection Settings
+rabbitmq:
+  uri: "amqp://guest:guest@localhost:5672/"
+  queue_name: "proxmox_logs"
+  exchange_name: "proxmox_exchange"  # Optional, leave empty to publish directly to queue
+  routing_key: "proxmox.logs"  # Used with exchange if specified
+
+# Rsyslog Listener Settings
+rsyslog:
+  protocol: "tcp"
+  port: "18006"
+
+# Logging Settings
+logging:
+  log_file: "/var/log/proxmox-logger.log"
+  log_level: "info" 

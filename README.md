@@ -11,6 +11,11 @@ This application listens for Proxmox logs sent via rsyslog over TCP, filters for
 - TCP listener for rsyslog messages
 - Pattern matching for Proxmox pvedaemon task logs (UPID messages)
 - RabbitMQ integration for message queue publishing
+- YAML configuration file support
+- Environment variable configuration
+- Automatic log file creation
+- RabbitMQ exchange and routing key support
+- Integrated rsyslog restart on service restart
 - Lightweight and efficient
 - Automated Debian package building with GitHub Actions
 - Fully integrated systemd service management
@@ -243,19 +248,60 @@ To manually release a new version:
 
 ## Configuration
 
-You can configure the application by modifying the constants at the top of `main.go`:
+Proxmox Logger can be configured using:
 
-```go
-const (
-    RSYSLOG_PROTOCOL = "tcp"
-    RSYSLOG_PORT     = "18006"
-    RABBITMQ_URI     = "amqp://guest:guest@192.168.1.5:5672/"
-)
+1. Configuration file at `/etc/proxmox-logger/config.yml`
+2. Environment variables
+3. Command-line flags (planned for future versions)
+
+### Configuration File
+
+The default configuration file is located at `/etc/proxmox-logger/config.yml`:
+
+```yaml
+# RabbitMQ Connection Settings
+rabbitmq:
+  uri: "amqp://guest:guest@localhost:5672/"
+  queue_name: "proxmox_logs"
+  exchange_name: "proxmox_exchange"  # Optional
+  routing_key: "proxmox.logs"        # Used with exchange
+
+# Rsyslog Listener Settings
+rsyslog:
+  protocol: "tcp"
+  port: "18006"
+
+# Logging Settings
+logging:
+  log_file: "/var/log/proxmox-logger.log"
+  log_level: "info"
 ```
 
-- `RSYSLOG_PROTOCOL`: The protocol to use for the rsyslog listener (TCP or UDP)
-- `RSYSLOG_PORT`: The port to listen on for rsyslog messages
-- `RABBITMQ_URI`: The URI of your RabbitMQ server
+### Environment Variables
+
+Environment variables can be set in `/etc/default/proxmox-logger`:
+
+```
+# RabbitMQ Settings
+PROXMOX_LOGGER_RABBITMQ_URI="amqp://guest:guest@localhost:5672/"
+PROXMOX_LOGGER_QUEUE_NAME="proxmox_logs"
+PROXMOX_LOGGER_EXCHANGE=""
+PROXMOX_LOGGER_ROUTING_KEY=""
+
+# Rsyslog Settings
+PROXMOX_LOGGER_PROTOCOL="tcp"
+PROXMOX_LOGGER_PORT="18006"
+
+# Logging Settings
+PROXMOX_LOGGER_LOG_FILE="/var/log/proxmox-logger.log"
+
+# Configuration file location
+PROXMOX_LOGGER_CONFIG="/etc/proxmox-logger/config.yml"
+```
+
+## Log File
+
+Proxmox Logger automatically logs to both stdout and a log file at `/var/log/proxmox-logger.log`. You can change the log file location by setting the `PROXMOX_LOGGER_LOG_FILE` environment variable or updating the configuration file.
 
 ## Configuring rsyslog on Proxmox
 

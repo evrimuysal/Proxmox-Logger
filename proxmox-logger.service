@@ -1,14 +1,19 @@
 [Unit]
-Description=Proxmox Logger Service
+Description=Proxmox Logger Service for Centralized Logging  # Renamed for better clarity
 After=network.target
+Before=rsyslog.service
 
 [Service]
-ExecStart=/usr/local/bin/proxmox-logger
+EnvironmentFile=-/etc/default/proxmox-logger
+ExecStart=/opt/proxmox-logger/proxmox-logger
 Restart=on-failure
+
 User=root
 Group=root
+
 ExecReload=/bin/kill -HUP $MAINPID
 ExecStop=/bin/kill -TERM $MAINPID
+ExecStopPost=/bin/systemctl restart rsyslog.service  # Restart rsyslog only after service stops
 
 [Install]
 WantedBy=multi-user.target
