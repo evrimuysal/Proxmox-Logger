@@ -22,11 +22,11 @@ var proxmoxLogPattern = regexp.MustCompile(`<\d+>.*pvedaemon\[\d+\].*UPID:.*`)
 func main() {
 
 	conn, err := amqp.Dial(RABBITMQ_URI)
-	failOnError(err, "RabbitMQ bağlantısı başarısız")
+	failOnError(err, "Failed to connect to RabbitMQ")
 	defer conn.Close()
 
 	ch, err := conn.Channel()
-	failOnError(err, "Kanal oluşturulamadı")
+	failOnError(err, "Failed to create channel")
 	defer ch.Close()
 
 	q, err := ch.QueueDeclare(
@@ -37,7 +37,7 @@ func main() {
 		false,
 		nil,
 	)
-	failOnError(err, "Kuyruk oluşturulamadı")
+	failOnError(err, "Failed to create queue")
 
 	go startRsyslogListener(RSYSLOG_PROTOCOL, RSYSLOG_PORT, ch, q.Name)
 
@@ -47,21 +47,21 @@ func main() {
 func startRsyslogListener(protocol, port string, ch *amqp.Channel, queueName string) {
 	addr, err := net.ResolveTCPAddr(protocol, ":"+port)
 	if err != nil {
-		log.Fatalf("Adres çözülemedi: %v", err)
+		log.Fatalf("Failed to resolve address: %v", err)
 	}
 
 	listener, err := net.ListenTCP(protocol, addr)
 	if err != nil {
-		log.Fatalf("Dinleyici başlatılamadı: %v", err)
+		log.Fatalf("Failed to start listener: %v", err)
 	}
 	defer listener.Close()
 
-	log.Printf("Rsyslog dinleyicisi %s:%s üzerinde başlatıldı (Proxmox pvedaemon mesajları için)", protocol, port)
+	log.Printf("Rsyslog listener started on %s:%s (for Proxmox pvedaemon messages)", protocol, port)
 
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
-			log.Printf("Bağlantı kabul edilemedi: %v", err)
+			log.Printf("Failed to accept connection: %v", err)
 			continue
 		}
 
@@ -76,7 +76,7 @@ func handleRsyslogConnection(conn net.Conn, ch *amqp.Channel, queueName string) 
 	for {
 		n, err := conn.Read(buffer)
 		if err != nil {
-			log.Printf("Okuma hatası: %v", err)
+			log.Printf("Read error: %v", err)
 			return
 		}
 
@@ -88,7 +88,7 @@ func handleRsyslogConnection(conn net.Conn, ch *amqp.Channel, queueName string) 
 				if logMsg = strings.TrimSpace(logMsg); logMsg != "" {
 
 					if strings.Contains(logMsg, "pvedaemon") && proxmoxLogPattern.MatchString(logMsg) {
-						log.Printf("Proxmox log bulundu: %s", logMsg)
+						log.Printf("Proxmox log found: %s", logMsg)
 						sendToRabbitMQ(logMsg, ch, queueName)
 					}
 				}
@@ -111,7 +111,7 @@ func sendToRabbitMQ(logMessage string, ch *amqp.Channel, queueName string) {
 		},
 	)
 	if err != nil {
-		log.Printf("RabbitMQ gönderim hatası: %v", err)
+		log.Printf("RabbitMQ publish error: %v", err)
 	}
 }
 

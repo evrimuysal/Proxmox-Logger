@@ -1,6 +1,8 @@
 module proxmox-logger
 
-go 1.23
+go 1.23.0
+
+toolchain go1.23.5
 
 require (
 	github.com/hpcloud/tail v1.0.0 // indirect
