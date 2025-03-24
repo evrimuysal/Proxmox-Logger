@@ -12,6 +12,7 @@ This application listens for Proxmox logs sent via rsyslog over TCP, filters for
 - Pattern matching for Proxmox pvedaemon task logs (UPID messages)
 - RabbitMQ integration for message queue publishing
 - Lightweight and efficient
+- Automated Debian package building with GitHub Actions
 
 ## Requirements
 
@@ -23,27 +24,18 @@ This application listens for Proxmox logs sent via rsyslog over TCP, filters for
 
 ### Using apt (Debian/Ubuntu)
 
-1. Add the repository:
 ```bash
-# Add the GPG key
-curl -fsSL https://your-github-repo.github.io/proxmox-logger/gpg | sudo gpg --dearmor -o /usr/share/keyrings/proxmox-logger-archive-keyring.gpg
+# Add GPG key
+curl -fsSL https://evrimuysal.github.io/Proxmox-Logger/gpg-key.asc | sudo gpg --dearmor -o /usr/share/keyrings/proxmox-logger-archive-keyring.gpg
 
-# Add the repository
-echo "deb [signed-by=/usr/share/keyrings/proxmox-logger-archive-keyring.gpg] https://your-github-repo.github.io/proxmox-logger/deb stable main" | sudo tee /etc/apt/sources.list.d/proxmox-logger.list
+# Add repository
+echo "deb [signed-by=/usr/share/keyrings/proxmox-logger-archive-keyring.gpg] https://evrimuysal.github.io/Proxmox-Logger/deb/stable main" | sudo tee /etc/apt/sources.list.d/proxmox-logger.list
 
 # Update package list
 sudo apt update
-```
 
-2. Install the package:
-```bash
+# Install package
 sudo apt install proxmox-logger
-```
-
-3. Start the service:
-```bash
-sudo systemctl enable proxmox-logger
-sudo systemctl start proxmox-logger
 ```
 
 ### Building from Source
@@ -79,7 +71,25 @@ sudo systemctl enable proxmox-logger.service
 sudo systemctl start proxmox-logger.service
 ```
 
-### Building Debian Package
+### Building Debian Package Locally
+
+There are two ways to build the Debian package locally:
+
+#### Method 1: Using the build script
+
+1. Install build dependencies:
+```bash
+sudo apt install golang debhelper
+```
+
+2. Run the build script:
+```bash
+./build/scripts/build-deb.sh
+```
+
+This will create a `.deb` package in the current directory.
+
+#### Method 2: Using dpkg-buildpackage
 
 1. Install build dependencies:
 ```bash
@@ -92,6 +102,40 @@ dpkg-buildpackage -us -uc
 ```
 
 The package will be created in the parent directory.
+
+### Automated Package Building
+
+This project uses GitHub Actions to automatically build Debian packages:
+
+1. When a new tag is pushed (format: `v*`), a Debian package is built
+2. The package is published to the APT repository on GitHub Pages
+3. The package is attached to GitHub Releases (when a release is created)
+
+## Releasing New Versions
+
+### Automatic Release Creation
+
+You can automatically create a new release with the following steps:
+
+1. Go to the [Actions tab](https://github.com/evrimuysal/Proxmox-Logger/actions) in the GitHub repository
+2. Select the "Create GitHub Release" workflow
+3. Click "Run workflow"
+4. Enter the version number (e.g., "1.0.0"), release title, and optional release notes
+5. Click "Run workflow"
+
+The workflow will:
+- Create a new tag with the specified version number
+- Create a new GitHub release
+- Trigger the build-deb workflow to build and publish the Debian package
+
+### Manual Release Creation
+
+To manually release a new version:
+
+1. Update version in `debian/changelog` and `build/debian/control`
+2. Create a new tag: `git tag v1.0.0`
+3. Push the tag: `git push --tags`
+4. GitHub Actions will automatically build and publish the package
 
 ## Configuration
 
