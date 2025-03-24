@@ -13,10 +13,11 @@ This application listens for Proxmox logs sent via rsyslog over TCP, filters for
 - RabbitMQ integration for message queue publishing
 - Lightweight and efficient
 - Automated Debian package building with GitHub Actions
+- Fully integrated systemd service management
 
 ## Requirements
 
-- Go 1.18+ (for building from source)
+- Go 1.20+ (for building from source)
 - A RabbitMQ server
 - Proxmox VE server with rsyslog
 
@@ -82,50 +83,112 @@ go build -o proxmox-logger
 
 4. Install as a systemd service (Debian/Ubuntu):
 ```bash
-# Create directory for the application
-sudo mkdir -p /opt/proxmox-logger
+# Copy the binary to the standard location
+sudo cp proxmox-logger /usr/local/bin/
+sudo chmod +x /usr/local/bin/proxmox-logger
 
-# Copy the binary and service file
-sudo cp proxmox-logger /opt/proxmox-logger/
-sudo cp proxmox-logger.service /etc/systemd/system/
+# Create and install the systemd service file
+cat << EOF | sudo tee /etc/systemd/system/proxmox-logger.service
+[Unit]
+Description=Proxmox Logger Service
+After=network.target
+
+[Service]
+ExecStart=/usr/local/bin/proxmox-logger
+Restart=on-failure
+User=root
+Group=root
+ExecReload=/bin/kill -HUP \$MAINPID
+ExecStop=/bin/kill -TERM \$MAINPID
+
+[Install]
+WantedBy=multi-user.target
+EOF
 
 # Reload systemd, enable and start the service
 sudo systemctl daemon-reload
-sudo systemctl enable proxmox-logger.service
-sudo systemctl start proxmox-logger.service
+sudo systemctl enable proxmox-logger
+sudo systemctl start proxmox-logger
 ```
 
 ### Building Debian Package Locally
 
-There are two ways to build the Debian package locally:
-
-#### Method 1: Using the build script
+You can build the Debian package manually with these steps:
 
 1. Install build dependencies:
 ```bash
-sudo apt install golang debhelper
+sudo apt install golang dpkg
 ```
 
-2. Run the build script:
+2. Create the package structure:
 ```bash
-./build/scripts/build-deb.sh
+# Create package directories
+mkdir -p pkg/DEBIAN
+mkdir -p pkg/usr/local/bin
+mkdir -p pkg/etc/systemd/system
+
+# Build and copy the binary
+go build -o pkg/usr/local/bin/proxmox-logger
+chmod +x pkg/usr/local/bin/proxmox-logger
+
+# Create the control file
+cat > pkg/DEBIAN/control << EOF
+Package: proxmox-logger
+Version: 1.0.0
+Section: base
+Priority: optional
+Architecture: amd64
+Maintainer: Your Name <your.email@example.com>
+Description: Logger for Proxmox, sends events to RabbitMQ.
+EOF
+
+# Create systemd service file
+cat > pkg/etc/systemd/system/proxmox-logger.service << EOF
+[Unit]
+Description=Proxmox Logger Service
+After=network.target
+
+[Service]
+ExecStart=/usr/local/bin/proxmox-logger
+Restart=on-failure
+User=root
+Group=root
+ExecReload=/bin/kill -HUP \$MAINPID
+ExecStop=/bin/kill -TERM \$MAINPID
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# Add lifecycle management scripts
+cat > pkg/DEBIAN/postinst << EOF
+#!/bin/bash
+set -e
+systemctl daemon-reload
+systemctl enable proxmox-logger
+systemctl restart proxmox-logger
+EOF
+chmod +x pkg/DEBIAN/postinst
+
+cat > pkg/DEBIAN/prerm << EOF
+#!/bin/bash
+set -e
+systemctl stop proxmox-logger
+systemctl disable proxmox-logger
+EOF
+chmod +x pkg/DEBIAN/prerm
+
+cat > pkg/DEBIAN/postrm << EOF
+#!/bin/bash
+set -e
+systemctl daemon-reload
+EOF
+chmod +x pkg/DEBIAN/postrm
+
+# Build the package
+dpkg-deb --build pkg
+mv pkg.deb proxmox-logger_1.0.0_amd64.deb
 ```
-
-This will create a `.deb` package in the current directory.
-
-#### Method 2: Using dpkg-buildpackage
-
-1. Install build dependencies:
-```bash
-sudo apt install devscripts debhelper golang-go
-```
-
-2. Build the package:
-```bash
-dpkg-buildpackage -us -uc
-```
-
-The package will be created in the parent directory.
 
 ### Automated Package Building
 
@@ -156,10 +219,9 @@ The workflow will:
 
 To manually release a new version:
 
-1. Update version in `debian/changelog` and `build/debian/control`
-2. Create a new tag: `git tag v1.0.0`
-3. Push the tag: `git push --tags`
-4. GitHub Actions will automatically build and publish the package
+1. Create a new tag: `git tag v1.0.0`
+2. Push the tag: `git push --tags`
+3. GitHub Actions will automatically build and publish the package
 
 ## Configuration
 
@@ -219,10 +281,18 @@ sudo journalctl -u proxmox-logger
 Run the application:
 
 ```bash
-./proxmox-logger
+/usr/local/bin/proxmox-logger
 ```
 
 The application will start listening for rsyslog messages on the configured port and forward matching logs to RabbitMQ.
+
+## Lifecycle Management
+
+The Debian package includes proper service lifecycle management:
+
+- **Installation**: The service is automatically enabled and started
+- **Removal**: The service is properly stopped and disabled before removal
+- **Upgrade**: The service is restarted after upgrade
 
 ## Log Format
 
