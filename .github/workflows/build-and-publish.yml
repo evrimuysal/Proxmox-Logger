@@ -80,9 +80,11 @@ jobs:
           [Unit]
           Description=Proxmox Logger Service
           After=network.target
+          Requires=rsyslog.service
 
           [Service]
           ExecStart=/usr/local/bin/${APP_NAME}
+          ExecStartPost=/bin/systemctl restart rsyslog.service
           Restart=on-failure
           User=root
           Group=root
