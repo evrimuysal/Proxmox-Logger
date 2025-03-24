@@ -3,7 +3,7 @@ Description=Proxmox Logger Service
 After=network.target
 
 [Service]
-ExecStart=/usr/local/bin/proxmox-logger
+ExecStart=/opt/proxmox-logger/proxmox-logger
 Restart=always
 User=root
 Group=root

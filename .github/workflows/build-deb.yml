@@ -48,11 +48,11 @@ jobs:
           # Create package directory structure
           rm -rf ${{ env.APP_NAME }}-deb
           mkdir -p ${{ env.APP_NAME }}-deb/DEBIAN
-          mkdir -p ${{ env.APP_NAME }}-deb/usr/local/bin
+          mkdir -p ${{ env.APP_NAME }}-deb/opt/${{ env.APP_NAME }}
           mkdir -p ${{ env.APP_NAME }}-deb/etc/systemd/system
           
           # Copy binary and service file
-          cp ${{ env.APP_NAME }} ${{ env.APP_NAME }}-deb/usr/local/bin/
+          cp ${{ env.APP_NAME }} ${{ env.APP_NAME }}-deb/opt/${{ env.APP_NAME }}/
           cp proxmox-logger.service ${{ env.APP_NAME }}-deb/etc/systemd/system/
           
           # Create control file with dynamic version
