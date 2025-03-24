@@ -16,6 +16,21 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
+        with:
+          ref: main  # First checkout the main branch (gh-pages branch)
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Set up Git
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          
+      - name: Fetch tags
+        run: git fetch --tags origin
+
+      - name: Create and switch to temporary branch
+        run: git checkout -b temp-${{ github.run_id }}
 
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -101,6 +116,9 @@ jobs:
 
       - name: Prepare APT repo structure
         run: |
+          # Clear any existing deb directory to avoid conflicts
+          rm -rf deb
+          
           mkdir -p deb/pool/main
           mkdir -p deb/dists/stable/main/binary-amd64
           mv ${APP_NAME}_${VERSION#v}_amd64.deb deb/pool/main/
@@ -115,14 +133,14 @@ jobs:
           Architectures: amd64
           Components: main
           Description: APT repo for Proxmox Logger
+          Date: $(date -u +"%a, %d %b %Y %H:%M:%S UTC")
           EOF
 
       - name: Commit and publish to main branch (GitHub Pages)
         run: |
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
-          git pull origin main --rebase
-          cp -r deb ./  # Overwrite local deb dir
-          git add deb/
+          # Force add the deb directory to ensure it overwrites any existing content
+          git add -f deb/
           git commit -m "Publish APT repo for ${VERSION}"
-          git push origin HEAD:main 
+          
+          # Force push to main branch to avoid merge conflicts
+          git push -f origin temp-${{ github.run_id }}:main 
