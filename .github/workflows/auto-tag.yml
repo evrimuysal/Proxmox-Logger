@@ -1,0 +1,73 @@
+name: Auto Tag on Push
+
+on:
+  push:
+    branches:
+      - master
+    paths-ignore:
+      - "deb/**"
+      - "README.md"
+      - ".github/workflows/**"
+
+jobs:
+  auto-tag:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      
+      - name: Generate new version number
+        id: version
+        run: |
+          # Get latest tag
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          echo "Latest tag: $LATEST_TAG"
+          
+          # Extract version components
+          if [[ $LATEST_TAG =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+            MAJOR="${BASH_REMATCH[1]}"
+            MINOR="${BASH_REMATCH[2]}"
+            PATCH="${BASH_REMATCH[3]}"
+            
+            # Increment patch version
+            PATCH=$((PATCH + 1))
+          else
+            # If no valid tag found, start with v0.1.0
+            MAJOR=0
+            MINOR=1
+            PATCH=0
+          fi
+          
+          # Set new version
+          NEW_VERSION="v$MAJOR.$MINOR.$PATCH"
+          echo "New version: $NEW_VERSION"
+          echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          
+          # Get current date in YYYYMMDD format
+          DATE=$(date +'%Y%m%d')
+          echo "date=$DATE" >> $GITHUB_OUTPUT
+          
+          # Get short commit hash
+          COMMIT_SHORT=$(git rev-parse --short HEAD)
+          echo "commit=$COMMIT_SHORT" >> $GITHUB_OUTPUT
+      
+      - name: Create and push tag
+        run: |
+          VERSION=${{ steps.version.outputs.version }}
+          DATE=${{ steps.version.outputs.date }}
+          COMMIT=${{ steps.version.outputs.commit }}
+          
+          # Configure Git
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          
+          # Create tag with annotation
+          git tag -a $VERSION -m "Auto-tag version $VERSION created on $DATE from commit $COMMIT"
+          
+          # Push tag
+          git push origin $VERSION
+          
+          echo "Created and pushed tag: $VERSION" 
