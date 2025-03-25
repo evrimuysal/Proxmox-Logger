@@ -39,8 +39,6 @@ jobs:
 
       - name: Install Go dependencies
         run: |
-          go mod download github.com/streadway/amqp
-          go mod download gopkg.in/yaml.v2
           go mod tidy
           
       - name: Build binary
