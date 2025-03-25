@@ -50,10 +50,61 @@ jobs:
           mkdir -p ${{ env.APP_NAME }}-deb/DEBIAN
           mkdir -p ${{ env.APP_NAME }}-deb/usr/local/bin
           mkdir -p ${{ env.APP_NAME }}-deb/etc/systemd/system
+          mkdir -p ${{ env.APP_NAME }}-deb/etc/proxmox-logger
+          mkdir -p ${{ env.APP_NAME }}-deb/etc/default
+          mkdir -p ${{ env.APP_NAME }}-deb/var/log
           
           # Copy binary and service file
           cp ${{ env.APP_NAME }} ${{ env.APP_NAME }}-deb/usr/local/bin/
           cp proxmox-logger.service ${{ env.APP_NAME }}-deb/etc/systemd/system/
+          
+          # Configuration file
+          cat > ${{ env.APP_NAME }}-deb/etc/proxmox-logger/config.yml << EOF
+          # Proxmox Logger Configuration
+
+          # RabbitMQ Connection Settings
+          rabbitmq:
+            uri: "amqp://guest:guest@localhost:5672/"
+            queue_name: "proxmox_logs"
+            exchange_name: "proxmox_exchange"  # Optional, leave empty to publish directly to queue
+            routing_key: "proxmox.logs"  # Used with exchange if specified
+
+          # Rsyslog Listener Settings
+          rsyslog:
+            protocol: "tcp"
+            port: "18006"
+
+          # Logging Settings
+          logging:
+            log_file: "/var/log/proxmox-logger.log"
+            log_level: "info"
+          EOF
+          
+          # Environment defaults file
+          cat > ${{ env.APP_NAME }}-deb/etc/default/proxmox-logger << EOF
+          # Proxmox Logger Environment Variables
+          # This file is sourced by systemd service
+
+          # RabbitMQ Settings
+          # PROXMOX_LOGGER_RABBITMQ_URI="amqp://guest:guest@localhost:5672/"
+          # PROXMOX_LOGGER_QUEUE_NAME="proxmox_logs"
+          # PROXMOX_LOGGER_EXCHANGE=""
+          # PROXMOX_LOGGER_ROUTING_KEY=""
+
+          # Rsyslog Settings
+          # PROXMOX_LOGGER_PROTOCOL="tcp"
+          # PROXMOX_LOGGER_PORT="18006"
+
+          # Logging Settings
+          # PROXMOX_LOGGER_LOG_FILE="/var/log/proxmox-logger.log"
+
+          # Configuration file location (default is /etc/proxmox-logger/config.yml)
+          # PROXMOX_LOGGER_CONFIG="/etc/proxmox-logger/config.yml"
+          EOF
+          
+          # Create empty log file
+          touch ${{ env.APP_NAME }}-deb/var/log/proxmox-logger.log
+          chmod 644 ${{ env.APP_NAME }}-deb/var/log/proxmox-logger.log
           
           # Create control file with dynamic version
           cat > ${{ env.APP_NAME }}-deb/DEBIAN/control << EOF

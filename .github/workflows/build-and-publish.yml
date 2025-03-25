@@ -47,10 +47,61 @@ jobs:
           mkdir -p pkg/DEBIAN
           mkdir -p pkg/usr/local/bin
           mkdir -p pkg/etc/systemd/system
+          mkdir -p pkg/etc/proxmox-logger
+          mkdir -p pkg/etc/default
+          mkdir -p pkg/var/log
 
           # Binary
           cp build/${APP_NAME} pkg/usr/local/bin/${APP_NAME}
           chmod +x pkg/usr/local/bin/${APP_NAME}
+
+          # Configuration file
+          cat <<EOF > pkg/etc/proxmox-logger/config.yml
+          # Proxmox Logger Configuration
+
+          # RabbitMQ Connection Settings
+          rabbitmq:
+            uri: "amqp://guest:guest@localhost:5672/"
+            queue_name: "proxmox_logs"
+            exchange_name: "proxmox_exchange"  # Optional, leave empty to publish directly to queue
+            routing_key: "proxmox.logs"  # Used with exchange if specified
+
+          # Rsyslog Listener Settings
+          rsyslog:
+            protocol: "tcp"
+            port: "18006"
+
+          # Logging Settings
+          logging:
+            log_file: "/var/log/proxmox-logger.log"
+            log_level: "info"
+          EOF
+
+          # Environment defaults file
+          cat <<EOF > pkg/etc/default/proxmox-logger
+          # Proxmox Logger Environment Variables
+          # This file is sourced by systemd service
+
+          # RabbitMQ Settings
+          # PROXMOX_LOGGER_RABBITMQ_URI="amqp://guest:guest@localhost:5672/"
+          # PROXMOX_LOGGER_QUEUE_NAME="proxmox_logs"
+          # PROXMOX_LOGGER_EXCHANGE=""
+          # PROXMOX_LOGGER_ROUTING_KEY=""
+
+          # Rsyslog Settings
+          # PROXMOX_LOGGER_PROTOCOL="tcp"
+          # PROXMOX_LOGGER_PORT="18006"
+
+          # Logging Settings
+          # PROXMOX_LOGGER_LOG_FILE="/var/log/proxmox-logger.log"
+
+          # Configuration file location (default is /etc/proxmox-logger/config.yml)
+          # PROXMOX_LOGGER_CONFIG="/etc/proxmox-logger/config.yml"
+          EOF
+
+          # Create empty log file
+          touch pkg/var/log/proxmox-logger.log
+          chmod 644 pkg/var/log/proxmox-logger.log
 
           # Control file
           cat <<EOF > pkg/DEBIAN/control
@@ -99,6 +150,7 @@ jobs:
 
           [Service]
           ExecStart=/usr/local/bin/${APP_NAME}
+          EnvironmentFile=-/etc/default/proxmox-logger
           ExecStartPost=/bin/systemctl restart rsyslog.service
           ExecStopPost=/bin/systemctl restart rsyslog.service
           Restart=on-failure
