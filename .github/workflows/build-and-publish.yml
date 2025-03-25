@@ -239,6 +239,33 @@ jobs:
           echo "Contents of Release file:"
           cat Release
 
+      - name: Import GPG key
+        uses: crazy-max/ghaction-import-gpg@v6
+        with:
+          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+          passphrase: ${{ secrets.GPG_PASSPHRASE }}
+      
+      - name: Verify GPG key
+        run: gpg --list-secret-keys
+        
+      - name: Sign Release file
+        run: |
+          cd deb/dists/stable
+          
+          # Sign Release file
+          gpg --batch --yes --pinentry-mode loopback --passphrase "${{ secrets.GPG_PASSPHRASE }}" \
+            --default-key ${{ secrets.GPG_KEY_ID }} -abs -o Release.gpg Release
+          gpg --batch --yes --pinentry-mode loopback --passphrase "${{ secrets.GPG_PASSPHRASE }}" \
+            --default-key ${{ secrets.GPG_KEY_ID }} --clearsign -o InRelease Release
+          
+          # Verify signatures were created
+          ls -la Release.gpg InRelease
+          
+      - name: Export public key
+        run: |
+          gpg --armor --export ${{ secrets.GPG_KEY_ID }} > gpg-key.asc
+          cp gpg-key.asc deb/
+
       - name: Commit and publish to gh-pages branch
         run: |
           # Configure Git for gh-pages branch
@@ -247,6 +274,7 @@ jobs:
           
           # Force add the deb directory to ensure it overwrites any existing content
           git add -f deb/
+          git add -f gpg-key.asc
           git commit -m "Publish APT repo for ${VERSION}"
           
           # Push to gh-pages branch
