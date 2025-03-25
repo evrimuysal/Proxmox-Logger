@@ -168,18 +168,17 @@ jobs:
           draft: false
           prerelease: false
 
-      - name: Initialize gh-pages branch
-        run: |
-          git checkout --orphan gh-pages || git checkout gh-pages
-          git rm -rf . || true
-          git clean -fdx
-          mkdir -p deb/pool/main/p/${APP_NAME}
-          mkdir -p deb/dists/stable/main/binary-amd64
-          touch .nojekyll
+      - name: Checkout gh-pages branch
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          fetch-depth: 0
+          clean: false
 
       - name: Prepare APT repository
         run: |
-          cp ${APP_NAME}_${NEW_VERSION_STRIPPED}_amd64.deb deb/pool/main/p/${APP_NAME}/
+          mkdir -p deb/pool/main/p/${APP_NAME}
+          cp ${APP_NAME}_${{ env.NEW_VERSION_STRIPPED }}_amd64.deb deb/pool/main/p/${APP_NAME}/
 
           cd deb
           dpkg-scanpackages --arch amd64 pool/ > dists/stable/main/binary-amd64/Packages
@@ -221,6 +220,6 @@ jobs:
         run: |
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
-          git add -f deb/ .nojekyll
+          git add -f deb/
           git commit -m "Update APT repo for ${{ env.NEW_VERSION }}" || echo "No changes to commit"
-          git push -f origin gh-pages
+          git push origin gh-pages
