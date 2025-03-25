@@ -1,12 +1,12 @@
 Package: proxmox-logger
-Version: 1.2.6
+Version: 0.0.4
 Architecture: amd64
 Maintainer: Evrim Uysal <evrim.uysal@yahoo.com>
-Filename: pool/main/p/proxmox-logger/proxmox-logger_1.2.6_amd64.deb
-Size: 3427072
-MD5sum: 09acc6d81987791cc465f00802b624c4
-SHA1: 0440e19ba04cb032dd3b0bce13f8daf1d0a75a4e
-SHA256: f60fa8940902d187dcf5c98db457272cd4130297095b1ccf49b5d0bc91494d43
+Filename: pool/main/p/proxmox-logger/proxmox-logger_0.0.4_amd64.deb
+Size: 3427206
+MD5sum: fcdb62650a86dda359743451a634e152
+SHA1: 16642ee71a6292c47027386237d3854bf4e6ba45
+SHA256: 421dcb397be6839eca946e3e6829f821bf0ba934d45c17e9be91788de605d683
 Section: base
 Priority: optional
 Description: Logger for Proxmox, sends events to RabbitMQ.
