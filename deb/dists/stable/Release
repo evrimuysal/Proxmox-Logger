@@ -1,0 +1,21 @@
+Origin: Proxmox Logger Repository
+Label: Proxmox Logger
+Suite: stable
+Codename: stable
+Architectures: amd64
+Components: main
+Description: Debian packages for Proxmox Logger
+Date: Tue, 25 Mar 2025 09:11:13 UTC
+Date: Tue, 25 Mar 2025 09:11:13 +0000
+MD5Sum:
+ db159d379d88ffb26c21d7460200a687              247 Release
+ c5959413066059fd744ba405a1c1ecfa              344 main/binary-amd64/Packages.gz
+SHA1:
+ 8d396b1f59a184c35639a90630e98730a70158b3              247 Release
+ 82f5786023cf4e268c2f97836f50c12ae4f57718              344 main/binary-amd64/Packages.gz
+SHA256:
+ 4562c677f5c8898b494a5ef0ad102a71f82c8778bc04d7d0bd3a810100b42284              247 Release
+ 39c52a26685ff800cf5adf06d6747a148d3cc3a92c19dd4c86391738f3296bfb              344 main/binary-amd64/Packages.gz
+SHA512:
+ 21977c535908247ba0431b9997a561021812434a602ee6163665287e58c299c20169b646aa239167dc73b98d85b49addfcd73ac34a4295416024c843478935c3              247 Release
+ 81aca6ce6cb90a2114df7fc13258ab920c88fa9dd2a5901b0227f2503e9e18ae2f489426b9396fc5781f17a77869a17a207514af2d990c5bcfffd1522b6b009e              344 main/binary-amd64/Packages.gz
