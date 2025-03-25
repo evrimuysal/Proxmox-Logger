@@ -8,6 +8,8 @@ on:
 jobs:
   build-and-publish:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     env:
       APP_NAME: proxmox-logger
@@ -17,8 +19,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
         with:
-          ref: main  # First checkout the main branch (gh-pages branch)
+          ref: main
           fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
           persist-credentials: true
 
       - name: Set up Git
@@ -31,6 +34,16 @@ jobs:
 
       - name: Create and switch to temporary branch
         run: git checkout -b temp-${{ github.run_id }}
+
+      - name: Checkout gh-pages branch
+        run: |
+          git branch -a
+          if git show-ref --verify --quiet refs/remotes/origin/gh-pages; then
+            git checkout gh-pages || git checkout -b gh-pages origin/gh-pages
+          else
+            git checkout -b gh-pages
+          fi
+          git pull origin gh-pages || true
 
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -179,11 +192,11 @@ jobs:
           echo "Contents of Release file:"
           cat Release
 
-      - name: Commit and publish to main branch (GitHub Pages)
+      - name: Commit and publish to gh-pages branch
         run: |
           # Force add the deb directory to ensure it overwrites any existing content
           git add -f deb/
           git commit -m "Publish APT repo for ${VERSION}"
           
-          # Force push to main branch to avoid merge conflicts
-          git push -f origin temp-${{ github.run_id }}:main 
+          # gh-pages branch'ine push yapın
+          git push -f origin gh-pages 
