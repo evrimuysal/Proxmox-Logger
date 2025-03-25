@@ -39,7 +39,10 @@ jobs:
           fi
 
           NEW_VERSION="v$MAJOR.$MINOR.$PATCH"
+          STRIPPED_VERSION="${NEW_VERSION#v}"
+
           echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
+          echo "NEW_VERSION_STRIPPED=$STRIPPED_VERSION" >> $GITHUB_ENV
 
           git tag -a $NEW_VERSION -m "Auto version $NEW_VERSION"
           git push origin $NEW_VERSION
@@ -146,14 +149,14 @@ jobs:
           EOF
 
           dpkg-deb --build pkg
-          mv pkg.deb ${APP_NAME}_${VERSION#v}_amd64.deb
+          mv pkg.deb ${APP_NAME}_${{ env.NEW_VERSION_STRIPPED }}_amd64.deb
 
       - name: Upload to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.NEW_VERSION }}
           name: "Release ${{ env.NEW_VERSION }}"
-          files: ${APP_NAME}_${{ env.NEW_VERSION#v }}_amd64.deb
+          files: ${APP_NAME}_${{ env.NEW_VERSION_STRIPPED }}_amd64.deb
           draft: false
           prerelease: false
 
@@ -169,7 +172,7 @@ jobs:
           mkdir -p deb/pool/main/p/${APP_NAME}
           mkdir -p deb/dists/stable/main/binary-amd64
 
-          cp ${APP_NAME}_${NEW_VERSION#v}_amd64.deb deb/pool/main/p/${APP_NAME}/
+          cp ${APP_NAME}_${NEW_VERSION_STRIPPED}_amd64.deb deb/pool/main/p/${APP_NAME}/
 
           cd deb
           dpkg-scanpackages --arch amd64 pool/ > dists/stable/main/binary-amd64/Packages
