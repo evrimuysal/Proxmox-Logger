@@ -4,7 +4,7 @@ A lightweight Go application that captures Proxmox pvedaemon logs and forwards t
 
 ## Overview
 
-This application listens for Proxmox logs sent via rsyslog over TCP, filters for specific pvedaemon task messages, and forwards them to a RabbitMQ message queue for further processing.
+Proxmox Logger is a service that listens for Proxmox logs sent via rsyslog over TCP, filters for specific pvedaemon task messages, and forwards them to a RabbitMQ message queue for further processing. It's designed to be lightweight, efficient, and easy to integrate with existing Proxmox VE environments.
 
 ## Features
 
@@ -13,12 +13,12 @@ This application listens for Proxmox logs sent via rsyslog over TCP, filters for
 - RabbitMQ integration for message queue publishing
 - YAML configuration file support
 - Environment variable configuration
-- Automatic log file creation
 - RabbitMQ exchange and routing key support
 - Integrated rsyslog restart on service restart
 - Lightweight and efficient
 - Automated Debian package building with GitHub Actions
 - Fully integrated systemd service management
+- Configuration validation and RabbitMQ connection testing
 
 ## Requirements
 
@@ -31,44 +31,49 @@ This application listens for Proxmox logs sent via rsyslog over TCP, filters for
 ### Using apt (Debian/Ubuntu)
 
 ```bash
-# Simplified installation with trusted repository
-echo "deb [trusted=yes] https://evrimuysal.github.io/Proxmox-Logger/deb stable main" | sudo tee /etc/apt/sources.list.d/proxmox-logger.list
-sudo apt update
-sudo apt install proxmox-logger -y
-```
-
-If you encounter issues with `apt update` not finding the package, try these troubleshooting steps:
-
-```bash
-# Verify repository configuration
-cat /etc/apt/sources.list.d/proxmox-logger.list
-
-# Force update repository metadata
-sudo apt update -o Acquire::AllowInsecureRepositories=true -o Acquire::AllowDowngradeToInsecureRepositories=true
-
-# Install the package with verbose output
-sudo apt install -V proxmox-logger
-
-# If it's still not working, try downloading and installing directly
-wget https://evrimuysal.github.io/Proxmox-Logger/deb/pool/main/proxmox-logger_1.2.0_amd64.deb
-sudo dpkg -i proxmox-logger_1.2.0_amd64.deb
-sudo apt --fix-broken install
-```
-
-If you prefer a more secure approach with GPG verification:
-
-```bash
-# Add GPG key
-curl -fsSL https://evrimuysal.github.io/Proxmox-Logger/gpg-key.asc | sudo gpg --dearmor -o /usr/share/keyrings/proxmox-logger-archive-keyring.gpg
-
 # Add repository
-echo "deb [signed-by=/usr/share/keyrings/proxmox-logger-archive-keyring.gpg] https://evrimuysal.github.io/Proxmox-Logger/deb/ stable main" | sudo tee /etc/apt/sources.list.d/proxmox-logger.list
+echo "deb [trusted=yes] https://evrimuysal.github.io/Proxmox-Logger/deb stable main" | sudo tee /etc/apt/sources.list.d/proxmox-logger.list
 
 # Update package list
 sudo apt update
 
 # Install package
 sudo apt install proxmox-logger
+```
+
+After installation, you need to configure the application:
+
+1. Create the configuration directory:
+```bash
+sudo mkdir -p /etc/proxmox-logger
+```
+
+2. Create the configuration file:
+```bash
+sudo nano /etc/proxmox-logger/config.yml
+```
+
+3. Add your RabbitMQ connection details:
+```yaml
+rabbitmq:
+  uri: "amqp://username:password@host:5672/"  # Replace with your RabbitMQ connection string
+  queue_name: "proxmox_logs"
+  exchange_name: ""  # Optional
+  routing_key: "proxmox.logs"  # Used with exchange
+
+rsyslog:
+  protocol: "tcp"
+  port: "18006"
+```
+
+4. Start the service:
+```bash
+sudo systemctl start proxmox-logger
+```
+
+The service will validate the configuration and test the RabbitMQ connection before starting. If there are any issues, check the logs:
+```bash
+sudo journalctl -u proxmox-logger
 ```
 
 ### Manual Installation
@@ -85,6 +90,8 @@ sudo dpkg -i proxmox-logger_*_amd64.deb
 # Install dependencies (if needed)
 sudo apt --fix-broken install
 ```
+
+Follow the same configuration steps as described above.
 
 ### Building from Source
 
@@ -104,7 +111,7 @@ go get github.com/streadway/amqp
 go build -o proxmox-logger
 ```
 
-4. Install as a systemd service (Debian/Ubuntu):
+4. Install as a systemd service:
 ```bash
 # Copy the binary to the standard location
 sudo cp proxmox-logger /usr/local/bin/
@@ -118,6 +125,7 @@ After=network.target
 
 [Service]
 ExecStart=/usr/local/bin/proxmox-logger
+EnvironmentFile=-/etc/default/proxmox-logger
 Restart=on-failure
 User=root
 Group=root
@@ -127,6 +135,10 @@ ExecStop=/bin/kill -TERM \$MAINPID
 [Install]
 WantedBy=multi-user.target
 EOF
+
+# Create configuration directory and file
+sudo mkdir -p /etc/proxmox-logger
+sudo nano /etc/proxmox-logger/config.yml
 
 # Reload systemd, enable and start the service
 sudo systemctl daemon-reload
@@ -134,125 +146,12 @@ sudo systemctl enable proxmox-logger
 sudo systemctl start proxmox-logger
 ```
 
-### Building Debian Package Locally
-
-You can build the Debian package manually with these steps:
-
-1. Install build dependencies:
-```bash
-sudo apt install golang dpkg
-```
-
-2. Create the package structure:
-```bash
-# Create package directories
-mkdir -p pkg/DEBIAN
-mkdir -p pkg/usr/local/bin
-mkdir -p pkg/etc/systemd/system
-
-# Build and copy the binary
-go build -o pkg/usr/local/bin/proxmox-logger
-chmod +x pkg/usr/local/bin/proxmox-logger
-
-# Create the control file
-cat > pkg/DEBIAN/control << EOF
-Package: proxmox-logger
-Version: 1.0.0
-Section: base
-Priority: optional
-Architecture: amd64
-Maintainer: Your Name <your.email@example.com>
-Description: Logger for Proxmox, sends events to RabbitMQ.
-EOF
-
-# Create systemd service file
-cat > pkg/etc/systemd/system/proxmox-logger.service << EOF
-[Unit]
-Description=Proxmox Logger Service
-After=network.target
-
-[Service]
-ExecStart=/usr/local/bin/proxmox-logger
-Restart=on-failure
-User=root
-Group=root
-ExecReload=/bin/kill -HUP \$MAINPID
-ExecStop=/bin/kill -TERM \$MAINPID
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-# Add lifecycle management scripts
-cat > pkg/DEBIAN/postinst << EOF
-#!/bin/bash
-set -e
-systemctl daemon-reload
-systemctl enable proxmox-logger
-systemctl restart proxmox-logger
-EOF
-chmod +x pkg/DEBIAN/postinst
-
-cat > pkg/DEBIAN/prerm << EOF
-#!/bin/bash
-set -e
-systemctl stop proxmox-logger
-systemctl disable proxmox-logger
-EOF
-chmod +x pkg/DEBIAN/prerm
-
-cat > pkg/DEBIAN/postrm << EOF
-#!/bin/bash
-set -e
-systemctl daemon-reload
-EOF
-chmod +x pkg/DEBIAN/postrm
-
-# Build the package
-dpkg-deb --build pkg
-mv pkg.deb proxmox-logger_1.0.0_amd64.deb
-```
-
-### Automated Package Building
-
-This project uses GitHub Actions to automatically build Debian packages:
-
-1. When a new tag is pushed (format: `v*`), a Debian package is built
-2. The package is published to the APT repository on GitHub Pages
-3. The package is attached to GitHub Releases (when a release is created)
-
-## Releasing New Versions
-
-### Automatic Release Creation
-
-You can automatically create a new release with the following steps:
-
-1. Go to the [Actions tab](https://github.com/evrimuysal/Proxmox-Logger/actions) in the GitHub repository
-2. Select the "Create GitHub Release" workflow
-3. Click "Run workflow"
-4. Enter the version number (e.g., "1.0.0"), release title, and optional release notes
-5. Click "Run workflow"
-
-The workflow will:
-- Create a new tag with the specified version number
-- Create a new GitHub release
-- Trigger the build-deb workflow to build and publish the Debian package
-
-### Manual Release Creation
-
-To manually release a new version:
-
-1. Create a new tag: `git tag v1.0.0`
-2. Push the tag: `git push --tags`
-3. GitHub Actions will automatically build and publish the package
-
 ## Configuration
 
 Proxmox Logger can be configured using:
 
 1. Configuration file at `/etc/proxmox-logger/config.yml`
-2. Environment variables
-3. Command-line flags (planned for future versions)
+2. Environment variables in `/etc/default/proxmox-logger`
 
 ### Configuration File
 
@@ -261,20 +160,15 @@ The default configuration file is located at `/etc/proxmox-logger/config.yml`:
 ```yaml
 # RabbitMQ Connection Settings
 rabbitmq:
-  uri: "amqp://guest:guest@localhost:5672/"
+  uri: "amqp://guest:guest@localhost:5672/"  # Replace with your RabbitMQ connection string
   queue_name: "proxmox_logs"
-  exchange_name: "proxmox_exchange"  # Optional
-  routing_key: "proxmox.logs"        # Used with exchange
+  exchange_name: ""  # Optional
+  routing_key: "proxmox.logs"  # Used with exchange
 
 # Rsyslog Listener Settings
 rsyslog:
   protocol: "tcp"
   port: "18006"
-
-# Logging Settings
-logging:
-  log_file: "/var/log/proxmox-logger.log"
-  log_level: "info"
 ```
 
 ### Environment Variables
@@ -292,16 +186,9 @@ PROXMOX_LOGGER_ROUTING_KEY=""
 PROXMOX_LOGGER_PROTOCOL="tcp"
 PROXMOX_LOGGER_PORT="18006"
 
-# Logging Settings
-PROXMOX_LOGGER_LOG_FILE="/var/log/proxmox-logger.log"
-
 # Configuration file location
 PROXMOX_LOGGER_CONFIG="/etc/proxmox-logger/config.yml"
 ```
-
-## Log File
-
-Proxmox Logger automatically logs to both stdout and a log file at `/var/log/proxmox-logger.log`. You can change the log file location by setting the `PROXMOX_LOGGER_LOG_FILE` environment variable or updating the configuration file.
 
 ## Configuring rsyslog on Proxmox
 
@@ -348,15 +235,7 @@ Run the application:
 /usr/local/bin/proxmox-logger
 ```
 
-The application will start listening for rsyslog messages on the configured port and forward matching logs to RabbitMQ.
-
-## Lifecycle Management
-
-The Debian package includes proper service lifecycle management:
-
-- **Installation**: The service is automatically enabled and started
-- **Removal**: The service is properly stopped and disabled before removal
-- **Upgrade**: The service is restarted after upgrade
+The application will validate the configuration and test the RabbitMQ connection before starting. If there are any issues, it will display appropriate error messages.
 
 ## Log Format
 
@@ -368,4 +247,4 @@ The application captures logs in the following format:
 
 ## License
 
-[MIT License](LICENSE) 
+[Apache License 2.0](LICENSE) 

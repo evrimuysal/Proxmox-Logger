@@ -2,12 +2,10 @@ package main
 
 import (
 	"fmt"
-	"io"
 	"io/ioutil"
 	"log"
 	"net"
 	"os"
-	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
@@ -16,7 +14,7 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-// Config defines application configuration settings including RabbitMQ, Rsyslog, and logging configurations.
+// Config defines application configuration settings including RabbitMQ and Rsyslog configurations.
 type Config struct {
 	RabbitMQ struct {
 		URI          string `yaml:"uri"`
@@ -28,10 +26,6 @@ type Config struct {
 		Protocol string `yaml:"protocol"`
 		Port     string `yaml:"port"`
 	} `yaml:"rsyslog"`
-	Logging struct {
-		LogFile  string `yaml:"log_file"`
-		LogLevel string `yaml:"log_level"`
-	} `yaml:"logging"`
 }
 
 // DEFAULT_CONFIG_PATH defines the default path to the configuration file.
@@ -39,34 +33,130 @@ type Config struct {
 // DEFAULT_PORT specifies the default port for the application.
 // DEFAULT_RABBITMQ_URI provides the URI for connecting to RabbitMQ.
 // DEFAULT_QUEUE_NAME defines the default name of the RabbitMQ queue.
-// DEFAULT_LOG_FILE specifies the default path for the log file.
 const (
 	DEFAULT_CONFIG_PATH  = "/etc/proxmox-logger/config.yml"
 	DEFAULT_PROTOCOL     = "tcp"
 	DEFAULT_PORT         = "18006"
-	DEFAULT_RABBITMQ_URI = "amqp://guest:guest@192.168.1.4:5672/"
+	DEFAULT_RABBITMQ_URI = "amqp://guest:guest@localhost:5672/"
 	DEFAULT_QUEUE_NAME   = "proxmox_logs"
-	DEFAULT_LOG_FILE     = "/var/log/proxmox-logger.log"
 )
 
 // proxmoxLogPattern is a compiled regular expression used to match log messages from Proxmox's pvedaemon service.
 var proxmoxLogPattern = regexp.MustCompile(`<\d+>.*pvedaemon\[\d+\].*UPID:.*`)
 
-// config holds the application configuration, including RabbitMQ, Rsyslog, and logging settings loaded from YAML or environment.
+// config holds the application configuration, including RabbitMQ and Rsyslog settings loaded from YAML or environment.
 var config Config
 
 // logger is a centralized logging instance used throughout the application for logging messages and errors.
 var logger *log.Logger
 
+// validateConfig checks if the configuration is valid and required fields are set.
+func validateConfig() error {
+	if config.RabbitMQ.URI == "" {
+		return fmt.Errorf("RabbitMQ URI is required")
+	}
+	if config.RabbitMQ.QueueName == "" {
+		return fmt.Errorf("RabbitMQ queue name is required")
+	}
+	return nil
+}
+
+// testRabbitMQConnection tests the connection to RabbitMQ and returns an error if the connection fails.
+func testRabbitMQConnection() error {
+	conn, err := amqp.Dial(config.RabbitMQ.URI)
+	if err != nil {
+		return fmt.Errorf("failed to connect to RabbitMQ: %v", err)
+	}
+	defer conn.Close()
+
+	ch, err := conn.Channel()
+	if err != nil {
+		return fmt.Errorf("failed to create channel: %v", err)
+	}
+	defer ch.Close()
+
+	// Test queue declaration
+	_, err = ch.QueueDeclare(
+		config.RabbitMQ.QueueName,
+		true,
+		false,
+		false,
+		false,
+		nil,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to declare queue: %v", err)
+	}
+
+	// Test exchange if configured
+	if config.RabbitMQ.ExchangeName != "" {
+		err = ch.ExchangeDeclare(
+			config.RabbitMQ.ExchangeName,
+			"topic",
+			true,
+			false,
+			false,
+			false,
+			nil,
+		)
+		if err != nil {
+			return fmt.Errorf("failed to declare exchange: %v", err)
+		}
+
+		err = ch.QueueBind(
+			config.RabbitMQ.QueueName,
+			config.RabbitMQ.RoutingKey,
+			config.RabbitMQ.ExchangeName,
+			false,
+			nil,
+		)
+		if err != nil {
+			return fmt.Errorf("failed to bind queue: %v", err)
+		}
+	}
+
+	return nil
+}
+
 // main initializes logging, loads configuration, connects to RabbitMQ, sets up queues, and starts the Rsyslog listener.
 func main() {
+	logger = log.New(os.Stdout, "", log.LstdFlags)
 
-	initLogging()
+	// Check if config file exists
+	if _, err := os.Stat(DEFAULT_CONFIG_PATH); os.IsNotExist(err) {
+		logger.Printf("Configuration file not found at %s", DEFAULT_CONFIG_PATH)
+		logger.Printf("Please create the configuration file with RabbitMQ connection details")
+		logger.Printf("Example configuration:")
+		logger.Printf(`
+rabbitmq:
+  uri: "amqp://username:password@host:5672/"
+  queue_name: "proxmox_logs"
+  exchange_name: ""  # Optional
+  routing_key: "proxmox.logs"  # Used with exchange
+
+rsyslog:
+  protocol: "tcp"
+  port: "18006"
+`)
+		os.Exit(1)
+	}
 
 	err := loadConfig()
 	if err != nil {
-		logger.Printf("Warning: Could not load configuration: %v. Using defaults.", err)
+		logger.Fatalf("Failed to load configuration: %v", err)
 	}
+
+	// Validate configuration
+	if err := validateConfig(); err != nil {
+		logger.Fatalf("Invalid configuration: %v", err)
+	}
+
+	// Test RabbitMQ connection
+	if err := testRabbitMQConnection(); err != nil {
+		logger.Fatalf("Failed to connect to RabbitMQ: %v", err)
+	}
+
+	logger.Printf("Successfully connected to RabbitMQ at %s", config.RabbitMQ.URI)
 
 	conn, err := amqp.Dial(config.RabbitMQ.URI)
 	if err != nil {
@@ -129,12 +219,10 @@ func main() {
 // loadConfig reads configuration settings from a file and environment variables and initializes default values if necessary.
 // It returns an error if the configuration file cannot be read or parsed.
 func loadConfig() error {
-
 	config.Rsyslog.Protocol = DEFAULT_PROTOCOL
 	config.Rsyslog.Port = DEFAULT_PORT
 	config.RabbitMQ.URI = DEFAULT_RABBITMQ_URI
 	config.RabbitMQ.QueueName = DEFAULT_QUEUE_NAME
-	config.Logging.LogFile = DEFAULT_LOG_FILE
 
 	configPath := os.Getenv("PROXMOX_LOGGER_CONFIG")
 	if configPath == "" {
@@ -170,44 +258,8 @@ func loadConfig() error {
 	if val := os.Getenv("PROXMOX_LOGGER_PORT"); val != "" {
 		config.Rsyslog.Port = val
 	}
-	if val := os.Getenv("PROXMOX_LOGGER_LOG_FILE"); val != "" {
-		config.Logging.LogFile = val
-	}
 
 	return nil
-}
-
-// initLogging initializes the logger for the application.
-// Configures logging to a file or stdout based on environment variables and default values.
-func initLogging() {
-
-	logger = log.New(os.Stdout, "", log.LstdFlags)
-
-	logFile := os.Getenv("PROXMOX_LOGGER_LOG_FILE")
-	if logFile == "" {
-
-		logFile = DEFAULT_LOG_FILE
-	}
-
-	if logFile != "" && logFile != "stdout" {
-		logDir := filepath.Dir(logFile)
-		if _, err := os.Stat(logDir); os.IsNotExist(err) {
-			err := os.MkdirAll(logDir, 0755)
-			if err != nil {
-				logger.Printf("Warning: Could not create log directory %s: %v", logDir, err)
-			}
-		}
-
-		f, err := os.OpenFile(logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-		if err != nil {
-			logger.Printf("Warning: Could not open log file %s: %v", logFile, err)
-		} else {
-
-			mw := io.MultiWriter(os.Stdout, f)
-			logger = log.New(mw, "", log.LstdFlags)
-			logger.Printf("Logging to %s and stdout", logFile)
-		}
-	}
 }
 
 // startRsyslogListener starts an rsyslog listener using the specified protocol and port, handling incoming connections.
@@ -258,7 +310,6 @@ func handleRsyslogConnection(conn net.Conn, ch *amqp.Channel, queueName string) 
 			logs := strings.Split(message, "\n")
 			for _, logMsg := range logs {
 				if logMsg = strings.TrimSpace(logMsg); logMsg != "" {
-
 					if strings.Contains(logMsg, "pvedaemon") && proxmoxLogPattern.MatchString(logMsg) {
 						logger.Printf("Proxmox log found: %s", logMsg)
 						sendToRabbitMQ(logMsg, ch, queueName)
@@ -295,7 +346,6 @@ func sendToRabbitMQ(logMessage string, ch *amqp.Channel, queueName string) {
 			logger.Printf("RabbitMQ publish error: %v", err)
 		}
 	} else {
-
 		err := ch.Publish(
 			"",
 			queueName,
