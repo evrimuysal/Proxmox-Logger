@@ -182,7 +182,7 @@ jobs:
 
           cd deb
           dpkg-scanpackages --arch amd64 pool/ > dists/stable/main/binary-amd64/Packages
-          gzip -k -9 dists/stable/main/binary-amd64/Packages
+          gzip -k -9 -f dists/stable/main/binary-amd64/Packages
 
           cd dists/stable
           cat > Release <<EOF
