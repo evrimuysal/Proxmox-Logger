@@ -66,6 +66,12 @@ jobs:
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
           
+          # Check if tag already exists
+          if git rev-parse "$VERSION" >/dev/null 2>&1; then
+            echo "Tag $VERSION already exists, skipping tag creation"
+            exit 0
+          fi
+          
           # Create tag with annotation
           git tag -a $VERSION -m "Auto-tag version $VERSION created on $DATE from commit $COMMIT"
           
