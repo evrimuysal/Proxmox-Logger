@@ -5,6 +5,7 @@ on:
       - master
     tags:
       - 'v*'
+
 jobs:
   auto-build-and-publish:
     runs-on: ubuntu-latest
@@ -53,6 +54,11 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: '1.21'
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y dpkg-dev apt-utils
 
       - name: Build binary
         run: |
@@ -162,25 +168,22 @@ jobs:
           draft: false
           prerelease: false
 
-      - name: Checkout gh-pages branch
-        uses: actions/checkout@v4
-        with:
-          ref: gh-pages
-          fetch-depth: 0
-          clean: false
+      - name: Initialize gh-pages branch
+        run: |
+          git checkout --orphan gh-pages || git checkout gh-pages
+          git rm -rf . || true
+          git clean -fdx
+          mkdir -p deb/pool/main/p/${APP_NAME}
+          mkdir -p deb/dists/stable/main/binary-amd64
+          touch .nojekyll
 
       - name: Prepare APT repository
         run: |
-          rm -rf deb
-          mkdir -p deb/pool/main/p/${APP_NAME}
-          mkdir -p deb/dists/stable/main/binary-amd64
-
           cp ${APP_NAME}_${NEW_VERSION_STRIPPED}_amd64.deb deb/pool/main/p/${APP_NAME}/
 
           cd deb
           dpkg-scanpackages --arch amd64 pool/ > dists/stable/main/binary-amd64/Packages
-          rm -f dists/stable/main/binary-amd64/Packages.gz
-          gzip -9 dists/stable/main/binary-amd64/Packages
+          gzip -k -9 dists/stable/main/binary-amd64/Packages
 
           cd dists/stable
           cat > Release <<EOF
@@ -218,6 +221,6 @@ jobs:
         run: |
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
-          git add -f deb/
+          git add -f deb/ .nojekyll
           git commit -m "Update APT repo for ${{ env.NEW_VERSION }}" || echo "No changes to commit"
-          git push origin gh-pages
+          git push -f origin gh-pages
