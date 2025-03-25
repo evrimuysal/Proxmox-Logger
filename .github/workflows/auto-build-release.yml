@@ -173,7 +173,7 @@ jobs:
           mkdir -p deb/pool/main/p/${APP_NAME}
           mkdir -p deb/dists/stable/main/binary-amd64
 
-          cp ../${APP_NAME}_${NEW_VERSION_STRIPPED}_amd64.deb deb/pool/main/p/${APP_NAME}/
+          cp ${APP_NAME}_${NEW_VERSION_STRIPPED}_amd64.deb deb/pool/main/p/${APP_NAME}/
 
           cd deb
           dpkg-scanpackages --arch amd64 pool/ > dists/stable/main/binary-amd64/Packages
