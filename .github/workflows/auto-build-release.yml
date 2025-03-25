@@ -1,4 +1,4 @@
-name: Auto Build, Package, and Publish APT Repo
+name: Auto Build, Package, and Publish APT Repository
 on:
   push:
     branches:
