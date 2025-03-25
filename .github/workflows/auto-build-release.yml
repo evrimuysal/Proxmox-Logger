@@ -1,0 +1,216 @@
+name: Auto Build, Package, and Publish APT Repo
+on:
+  push:
+    branches:
+      - master
+jobs:
+  auto-build-and-publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    env:
+      APP_NAME: proxmox-logger
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Git
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+
+      - name: Determine version and create tag
+        id: version
+        run: |
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          echo "Latest tag: $LATEST_TAG"
+
+          if [[ $LATEST_TAG =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+            MAJOR="${BASH_REMATCH[1]}"
+            MINOR="${BASH_REMATCH[2]}"
+            PATCH="${BASH_REMATCH[3]}"
+            PATCH=$((PATCH + 1))
+          else
+            MAJOR=0; MINOR=1; PATCH=0
+          fi
+
+          NEW_VERSION="v$MAJOR.$MINOR.$PATCH"
+          echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
+
+          git tag -a $NEW_VERSION -m "Auto version $NEW_VERSION"
+          git push origin $NEW_VERSION
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+
+      - name: Build binary
+        run: |
+          mkdir -p build
+          GOOS=linux GOARCH=amd64 go build -o build/${APP_NAME} main.go
+
+      - name: Create .deb package with config and service files
+        run: |
+          VERSION=${{ env.NEW_VERSION }}
+
+          mkdir -p pkg/DEBIAN
+          mkdir -p pkg/usr/local/bin
+          mkdir -p pkg/etc/systemd/system
+          mkdir -p pkg/etc/proxmox-logger
+          mkdir -p pkg/etc/default
+          mkdir -p pkg/var/log
+
+          cp build/${APP_NAME} pkg/usr/local/bin/${APP_NAME}
+          chmod +x pkg/usr/local/bin/${APP_NAME}
+
+          cat <<EOF > pkg/etc/proxmox-logger/config.yml
+          rabbitmq:
+            uri: "amqp://guest:guest@localhost:5672/"
+            queue_name: "proxmox_logs"
+            exchange_name: ""
+            routing_key: "proxmox.logs"
+
+          rsyslog:
+            protocol: "tcp"
+            port: "18006"
+
+          logging:
+            log_file: "/var/log/proxmox-logger.log"
+            log_level: "info"
+          EOF
+
+          cat <<EOF > pkg/etc/default/proxmox-logger
+          # Environment variables
+          # PROXMOX_LOGGER_CONFIG="/etc/proxmox-logger/config.yml"
+          EOF
+
+          touch pkg/var/log/proxmox-logger.log
+          chmod 644 pkg/var/log/proxmox-logger.log
+
+          cat <<EOF > pkg/DEBIAN/control
+          Package: ${APP_NAME}
+          Version: ${VERSION#v}
+          Section: base
+          Priority: optional
+          Architecture: amd64
+          Maintainer: Evrim Uysal <evrim.uysal@yahoo.com>
+          Description: Logger for Proxmox, sends events to RabbitMQ.
+          EOF
+
+          cat <<EOF > pkg/DEBIAN/postinst
+          #!/bin/bash
+          set -e
+          systemctl daemon-reload
+          systemctl enable ${APP_NAME} || true
+          systemctl restart ${APP_NAME} || true
+          exit 0
+          EOF
+          chmod +x pkg/DEBIAN/postinst
+
+          cat <<EOF > pkg/DEBIAN/prerm
+          #!/bin/bash
+          set -e
+          systemctl stop ${APP_NAME}
+          systemctl disable ${APP_NAME}
+          EOF
+          chmod +x pkg/DEBIAN/prerm
+
+          cat <<EOF > pkg/DEBIAN/postrm
+          #!/bin/bash
+          set -e
+          systemctl daemon-reload
+          EOF
+          chmod +x pkg/DEBIAN/postrm
+
+          cat <<EOF > pkg/etc/systemd/system/${APP_NAME}.service
+          [Unit]
+          Description=Proxmox Logger Service
+          After=network.target
+
+          [Service]
+          ExecStart=/usr/local/bin/${APP_NAME}
+          EnvironmentFile=-/etc/default/proxmox-logger
+          Restart=on-failure
+          User=root
+          Group=root
+          ExecReload=/bin/kill -HUP \$MAINPID
+          ExecStop=/bin/kill -TERM \$MAINPID
+
+          [Install]
+          WantedBy=multi-user.target
+          EOF
+
+          dpkg-deb --build pkg
+          mv pkg.deb ${APP_NAME}_${VERSION#v}_amd64.deb
+
+      - name: Upload to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.NEW_VERSION }}
+          name: "Release ${{ env.NEW_VERSION }}"
+          files: ${APP_NAME}_${{ env.NEW_VERSION#v }}_amd64.deb
+          draft: false
+          prerelease: false
+
+      - name: Checkout gh-pages branch
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          fetch-depth: 0
+          clean: false
+
+      - name: Prepare APT repository
+        run: |
+          mkdir -p deb/pool/main/p/${APP_NAME}
+          mkdir -p deb/dists/stable/main/binary-amd64
+
+          cp ${APP_NAME}_${NEW_VERSION#v}_amd64.deb deb/pool/main/p/${APP_NAME}/
+
+          cd deb
+          dpkg-scanpackages --arch amd64 pool/ > dists/stable/main/binary-amd64/Packages
+          gzip -k -9 dists/stable/main/binary-amd64/Packages
+
+          cd dists/stable
+          cat > Release <<EOF
+          Origin: Proxmox Logger Repository
+          Label: Proxmox Logger
+          Suite: stable
+          Codename: stable
+          Architectures: amd64
+          Components: main
+          Description: Debian packages for Proxmox Logger
+          Date: $(date -u +"%a, %d %b %Y %H:%M:%S UTC")
+          EOF
+
+          apt-ftparchive release . >> Release
+
+      - name: Import GPG key
+        uses: crazy-max/ghaction-import-gpg@v6
+        with:
+          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+          passphrase: ${{ secrets.GPG_PASSPHRASE }}
+
+      - name: Sign Release files
+        run: |
+          cd deb/dists/stable
+          gpg --batch --yes --pinentry-mode loopback --passphrase "${{ secrets.GPG_PASSPHRASE }}" \
+            --default-key ${{ secrets.GPG_KEY_ID }} -abs -o Release.gpg Release
+          gpg --batch --yes --pinentry-mode loopback --passphrase "${{ secrets.GPG_PASSPHRASE }}" \
+            --default-key ${{ secrets.GPG_KEY_ID }} --clearsign -o InRelease Release
+
+      - name: Export public key
+        run: |
+          gpg --armor --export ${{ secrets.GPG_KEY_ID }} > deb/gpg-key.asc
+
+      - name: Commit and publish APT repo
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add -f deb/
+          git commit -m "Update APT repo for ${{ env.NEW_VERSION }}"
+          git push origin gh-pages
