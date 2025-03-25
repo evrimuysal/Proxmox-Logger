@@ -128,8 +128,13 @@ jobs:
           
           echo "[postinst] Reloading systemd and enabling service"
           systemctl daemon-reload
-          systemctl enable proxmox-logger
-          systemctl restart proxmox-logger
+          
+          # Eğer servis varsa enable etmeye ve başlatmaya çalış
+          if systemctl list-unit-files | grep -q 'proxmox-logger.service'; then
+            systemctl enable proxmox-logger || true
+            systemctl restart proxmox-logger || true
+            echo "[postinst] Service enabled and restart attempted"
+          fi
           
           exit 0
           EOF
